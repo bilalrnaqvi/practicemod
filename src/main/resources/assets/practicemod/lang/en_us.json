@@ -1,0 +1,13 @@
+{
+  "itemGroup.practicemod": "Practice Mod Tab",
+  "block.practicemod.example_block": "Example Block",
+  "item.practicemod.example_item": "Example Item",
+
+  "practicemod.configuration.title": "Practice Mod Configs",
+  "practicemod.configuration.section.practicemod.common.toml": "Practice Mod Configs",
+  "practicemod.configuration.section.practicemod.common.toml.title": "Practice Mod Configs",
+  "practicemod.configuration.items": "Item List",
+  "practicemod.configuration.logDirtBlock": "Log Dirt Block",
+  "practicemod.configuration.magicNumberIntroduction": "Magic Number Text",
+  "practicemod.configuration.magicNumber": "Magic Number"
+}

@@ -1,4 +1,4 @@
-package com.example.examplemod;
+package com.bilal.practicemod;
 
 import java.util.List;
 import java.util.Set;
