@@ -142,11 +142,12 @@ public final class JetpackAnimationState {
     private boolean firedPop;
 
     // Advances one game tick. `thrusting` is the EFFECTIVE thrust (wants && fuel && !overheated),
-    // `gliding` the controlled glide (airborne, fuel, not thrusting), `lowFuel` means the tank is
-    // in its last ~10%, `fuelEmpty` means nothing left to burn at all. `horizontalSpeed` is in
-    // blocks/tick, derived from position deltas so it is equally valid for remote players.
-    public void tick(boolean wearing, boolean thrusting, boolean gliding, float heat, boolean overheated,
-            boolean lowFuel, boolean fuelEmpty, float horizontalSpeed) {
+    // `gliding` the near-ground hover-boot cushion, `surging` the look-directed Superman mode,
+    // `coasting` the unpowered momentum glide after a thrust cut, `lowFuel` means the tank is in its
+    // last ~10%, `fuelEmpty` means nothing left to burn at all. `horizontalSpeed` is in blocks/tick,
+    // derived from position deltas so it is equally valid for remote players.
+    public void tick(boolean wearing, boolean thrusting, boolean gliding, boolean surging, boolean coasting,
+            float heat, boolean overheated, boolean lowFuel, boolean fuelEmpty, float horizontalSpeed) {
         this.firedIgnition = false;
         this.firedStall = false;
         this.firedVentOpen = false;
@@ -238,24 +239,54 @@ public final class JetpackAnimationState {
             this.prevOverheated = overheated;
         }
 
-        // Body flight pose. The cruise factor keeps tracking actual speed even while the weight
-        // eases out, so a thrust cut at speed follows through FROM the cruise pose rather than
-        // detouring via hover.
-        float cruiseStart = (float) (double) JetpackClientConfig.CRUISE_SPEED_THRESHOLD.get();
-        float cruiseFull = Math.max(cruiseStart + 0.01F, (float) (double) JetpackClientConfig.CRUISE_FULL_SPEED.get());
-        float speedT = Mth.clamp((horizontalSpeed - cruiseStart) / (cruiseFull - cruiseStart), 0.0F, 1.0F);
-        float rawCruise = speedT * speedT * (3.0F - 2.0F * speedT); // smoothstep
+        // Body flight pose. Under power the attitude is MODE-driven, not speed-driven: the surge is
+        // the flat Superman pose and the glide is deliberately upright, so the two modes stay
+        // visually distinct at any speed. Unpowered (coasting, or following through after a cut) it
+        // falls back to tracking actual speed, which is what makes a coast read right - you follow
+        // through flat out of a surge and rise toward upright as the momentum bleeds off.
+        float rawCruise;
+        if (surging) {
+            rawCruise = 1.0F;
+        } else if (thrusting) {
+            rawCruise = 0.0F;
+        } else {
+            // Both thresholds are FRACTIONS of the server's horizontal cap, so normalise the measured
+            // speed against it before the blend - an absolute threshold above the cap is unreachable
+            // and would pin the pose upright. The cap lives in the server config, which is only loaded
+            // while in a world (same guard as JetpackFuelHandler.getFuelCapacity); with nothing to
+            // normalise against, hold the cruise factor where it is.
+            float cap = JetpackServerConfig.SPEC.isLoaded()
+                    ? (float) (double) JetpackServerConfig.GLIDE_HORIZONTAL_CAP.get()
+                    : 0.0F;
+            if (cap <= 0.0F) {
+                rawCruise = this.cruiseCur;
+            } else {
+                float cruiseStart = (float) (double) JetpackClientConfig.CRUISE_SPEED_THRESHOLD.get();
+                float cruiseFull = Math.max(cruiseStart + 0.01F, (float) (double) JetpackClientConfig.CRUISE_FULL_SPEED.get());
+                // Clamped to 1: the afterburner multiplies the cap, so an afterburning run can exceed
+                // it - that should pin the pose at full cruise, not overshoot past it.
+                float speedFraction = Math.min(1.0F, horizontalSpeed / cap);
+                float speedT = Mth.clamp((speedFraction - cruiseStart) / (cruiseFull - cruiseStart), 0.0F, 1.0F);
+                rawCruise = speedT * speedT * (3.0F - 2.0F * speedT); // smoothstep
+            }
+        }
         float smoothingTicks = Math.max(1.0F, (float) (double) JetpackClientConfig.SPEED_SMOOTHING_TICKS.get());
         this.cruisePrev = this.cruiseCur;
         this.cruiseCur += (rawCruise - this.cruiseCur) * (1.0F - (float) Math.exp(-1.0F / smoothingTicks));
 
-        if (this.firedStall) {
-            // Fuel died mid-thrust: drop the body on the same harsh cut as the nozzles.
+        // A coast is still flight, so the pose stays fully engaged through it - cutting the throttle
+        // at speed must never snap the body back to the vanilla falling pose. The blend-out only
+        // starts once the coast itself has decayed, and even a fuel stall leaves the body flying if
+        // there's momentum left to fly on (the harsh cut still hits the nozzles).
+        boolean flying = thrusting || coasting;
+        if (this.firedStall && !coasting) {
+            // Fuel died mid-thrust with nothing left to carry: drop the body on the same harsh cut
+            // as the nozzles.
             this.poseWeight.forceEaseTo(0.0F, STALL_CUT_TICKS);
         } else {
-            // Ease in fast on thrust, out slower (follow-through) when it stops.
-            this.poseWeight.easeTo(thrusting ? 1.0F : 0.0F,
-                    thrusting ? (float) (double) JetpackClientConfig.BLEND_IN_TICKS.get()
+            // Ease in fast on thrust, out slower (follow-through) when the flight ends.
+            this.poseWeight.easeTo(flying ? 1.0F : 0.0F,
+                    flying ? (float) (double) JetpackClientConfig.BLEND_IN_TICKS.get()
                             : (float) (double) JetpackClientConfig.BLEND_OUT_TICKS.get());
         }
 

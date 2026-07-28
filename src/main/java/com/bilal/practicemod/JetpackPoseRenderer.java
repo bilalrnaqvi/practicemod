@@ -31,8 +31,8 @@ public final class JetpackPoseRenderer {
     // Weights below this render identically to upright; skip the work.
     private static final float MIN_WEIGHT = 0.005F;
 
-    // How closely the arms hug the body when fully swept back in cruise, in degrees outward (a
-    // small gap keeps them from clipping the torso).
+    // How far apart the arms sit at full cruise, in degrees outward from the torso line (a small
+    // gap keeps them from clipping the torso, whichever way cruiseArmSweepDegrees points them).
     private static final float CRUISE_ARM_HUG_DEGREES = 4.0F;
 
     // Knees-together roll at full cruise, in radians (right leg; mirrored for the left).
@@ -74,12 +74,14 @@ public final class JetpackPoseRenderer {
         }
 
         // Partition of unity scaled by engagement: upright <-> hover <-> cruise is one continuous
-        // 2-D blend. Positive pitch = forward (cruise), negative = the hover back-lean.
+        // 2-D blend. Both terms are positive pitch = forward, so the hover's slight forward tilt is
+        // the same attitude the cruise pitch grows out of, not a lean the body has to swing back
+        // through on the way to flat. (A negative hoverLeanDegrees restores the back-lean.)
         float cruise = state.cruiseFactor(partialTick);
         float hoverWeight = weight * (1.0F - cruise);
         float cruiseWeight = weight * cruise;
         float pitchDeg = cruiseWeight * (float) (double) JetpackClientConfig.MAX_CRUISE_PITCH_DEGREES.get()
-                - hoverWeight * (float) (double) JetpackClientConfig.HOVER_LEAN_DEGREES.get();
+                + hoverWeight * (float) (double) JetpackClientConfig.HOVER_LEAN_DEGREES.get();
         state.setRenderPose(hoverWeight, cruiseWeight, pitchDeg);
 
         poseStack.translate(0.0F, PIVOT_Y, 0.0F);
@@ -131,7 +133,8 @@ public final class JetpackPoseRenderer {
             model.leftLeg.zRot -= hoverWeight * HOVER_LEG_ROLL;
         }
 
-        // Cruise: arms swept back along the sides, legs together and trailing.
+        // Cruise: arms driven to cruiseArmSweepDegrees (forward past the head by default), legs
+        // together and trailing.
         if (cruiseWeight > 0.0F) {
             float armSweep = degToRad(JetpackClientConfig.CRUISE_ARM_SWEEP_DEGREES.get());
             float armHug = degToRad(CRUISE_ARM_HUG_DEGREES);
