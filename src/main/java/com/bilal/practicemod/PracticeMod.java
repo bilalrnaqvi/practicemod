@@ -81,9 +81,42 @@ public class PracticeMod {
     public static final Supplier<AttachmentType<Boolean>> JETPACK_THRUSTING = ATTACHMENT_TYPES.register("jetpack_thrusting",
             () -> AttachmentType.builder(() -> Boolean.FALSE).build());
 
-    // Whether the player is in the controlled glide (worn, airborne, fuel, not thrusting). Computed
-    // identically on both sides by JetpackFlightHandler (client predicts the local player); remote
-    // viewers get it via JetpackAnimSyncPayload. Drives glide particles and the airbrake pose.
+    // The player's WASD movement impulses this tick, in [-1, 1] (forward = W positive, strafe = A
+    // positive, matching vanilla's leftImpulse). Set from local input on the client and from the
+    // synced JetpackInputPayload on the server, same dual-sided pattern as JETPACK_THRUSTING. The
+    // flight sim rotates these by the player's yaw so thrust steers relative to facing. Not persisted.
+    public static final Supplier<AttachmentType<Float>> JETPACK_FORWARD = ATTACHMENT_TYPES.register("jetpack_forward",
+            () -> AttachmentType.builder(() -> 0.0F).build());
+
+    public static final Supplier<AttachmentType<Float>> JETPACK_STRAFE = ATTACHMENT_TYPES.register("jetpack_strafe",
+            () -> AttachmentType.builder(() -> 0.0F).build());
+
+    // Whether the player is holding the boost (sprint) key. Only meaningful under the OVERDRIVE boost
+    // profile, where holding it while thrusting engages the surge. Set from local input on the client
+    // and from the synced JetpackInputPayload on the server, same dual-sided pattern as
+    // JETPACK_THRUSTING. Not persisted; pure per-tick input state.
+    public static final Supplier<AttachmentType<Boolean>> JETPACK_OVERDRIVE = ATTACHMENT_TYPES.register("jetpack_overdrive",
+            () -> AttachmentType.builder(() -> Boolean.FALSE).build());
+
+    // Whether the surge is actually engaged this tick: OVERDRIVE profile, thrusting, boost key held.
+    // Unlike JETPACK_OVERDRIVE (raw key state) this is the gated result, so it already accounts for
+    // fuel, overheat and the boost profile. Computed identically on both sides by JetpackFlightHandler
+    // (client predicts the local player); remote viewers get it via JetpackAnimSyncPayload. Drives the
+    // flat Superman body pose and the HUD's surge color.
+    public static final Supplier<AttachmentType<Boolean>> JETPACK_SURGING = ATTACHMENT_TYPES.register("jetpack_surging",
+            () -> AttachmentType.builder(() -> Boolean.FALSE).build());
+
+    // Whether the player is coasting: airborne with the throttle released but still carrying real
+    // horizontal speed, so the jetpack keeps them flying (gentle momentum bleed, capped sink) instead
+    // of dropping them. Same dual-sided computation as JETPACK_SURGING; keeps the flight pose engaged
+    // so a thrust cut never snaps the body back to the vanilla falling pose.
+    public static final Supplier<AttachmentType<Boolean>> JETPACK_COASTING = ATTACHMENT_TYPES.register("jetpack_coasting",
+            () -> AttachmentType.builder(() -> Boolean.FALSE).build());
+
+    // Whether the player is in the near-ground hover-boot cushion (worn, airborne, descending within
+    // hoverBootRange, not thrusting). Computed identically on both sides by JetpackFlightHandler (client
+    // predicts the local player); remote viewers get it via JetpackAnimSyncPayload. Drives the airbrake
+    // pose and its exhaust. (Named "gliding" for historical reasons - the old glide feature it replaced.)
     public static final Supplier<AttachmentType<Boolean>> JETPACK_GLIDING = ATTACHMENT_TYPES.register("jetpack_gliding",
             () -> AttachmentType.builder(() -> Boolean.FALSE).build());
 

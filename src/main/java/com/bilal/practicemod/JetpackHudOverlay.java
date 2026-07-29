@@ -29,6 +29,7 @@ public final class JetpackHudOverlay implements LayeredDraw.Layer {
     private static final int HEAT_NORMAL = 0xFF40C040;   // green: standard thrust
     private static final int HEAT_OPTIMAL = 0xFFF0C020;  // yellow: afterburner band
     private static final int HEAT_CRITICAL = 0xFFE04030; // red: next stop is a stall
+    private static final int HEAT_OVERDRIVE = 0xFF60E0FF; // bright cyan: OVERDRIVE surge engaged
     private static final int FUEL_COLOR = 0xFF3898D8;    // blue: distinct from every heat zone
 
     @Override
@@ -55,8 +56,13 @@ public final class JetpackHudOverlay implements LayeredDraw.Layer {
         int fuelY = base - FUEL_HEIGHT;
         int heatY = fuelY - GAP - HEAT_HEIGHT;
 
-        // Heat bar: fill color tracks the zone the needle is currently in.
-        int heatColor = heat >= JetpackServerConfig.OPTIMAL_ZONE_END.get() ? HEAT_CRITICAL
+        // Heat bar: fill color tracks the zone the needle is currently in - unless the surge is
+        // actively engaged, which flashes a bright cyan so the player sees they're boosting. The
+        // attachment is the already-gated flight-sim result, so the bar only lights up when the
+        // surge is really firing (fuel, heat and boost profile all permitting).
+        boolean surging = Boolean.TRUE.equals(player.getData(PracticeMod.JETPACK_SURGING));
+        int heatColor = surging ? HEAT_OVERDRIVE
+                : heat >= JetpackServerConfig.OPTIMAL_ZONE_END.get() ? HEAT_CRITICAL
                 : heat >= JetpackServerConfig.OPTIMAL_ZONE_START.get() ? HEAT_OPTIMAL
                 : HEAT_NORMAL;
         graphics.fill(x - 1, heatY - 1, x + WIDTH + 1, heatY + HEAT_HEIGHT + 1, BACKGROUND);

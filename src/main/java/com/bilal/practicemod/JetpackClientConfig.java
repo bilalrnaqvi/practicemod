@@ -70,8 +70,10 @@ public class JetpackClientConfig {
 
     public static final ModConfigSpec.DoubleValue CRUISE_ARM_SWEEP_DEGREES = BUILDER
             .comment("Arm angle in the cruise pose. Negative extends the arms forward past the head (superman);",
-                    "positive sweeps them back along the sides (dive).")
-            .defineInRange("cruiseArmSweepDegrees", -165.0, -180.0, 80.0);
+                    "positive sweeps them back along the sides (dive). The default is a small positive sweep, so",
+                    "the arms stay relaxed against the body as speed builds - the superman reach is deliberately",
+                    "not the shipped look.")
+            .defineInRange("cruiseArmSweepDegrees", 20.0, -180.0, 80.0);
 
     public static final ModConfigSpec.DoubleValue CRUISE_LEG_TRAIL_DEGREES = BUILDER
             .comment("How far the legs trail behind the body in the cruise pose, in degrees.")

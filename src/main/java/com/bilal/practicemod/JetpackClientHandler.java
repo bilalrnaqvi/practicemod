@@ -51,7 +51,15 @@ public class JetpackClientHandler {
         }
 
         boolean jumping = player.input.jumping;
+        float forward = player.input.forwardImpulse;
+        float strafe = player.input.leftImpulse;
+        // Read the sprint key directly: vanilla clears the sprint FLAG when a player is airborne
+        // without forward input, which would make it a flaky overdrive trigger mid-flight.
+        boolean boost = Minecraft.getInstance().options.keySprint.isDown();
         player.setData(PracticeMod.JETPACK_THRUSTING, jumping);
-        PacketDistributor.sendToServer(new JetpackInputPayload(jumping));
+        player.setData(PracticeMod.JETPACK_FORWARD, forward);
+        player.setData(PracticeMod.JETPACK_STRAFE, strafe);
+        player.setData(PracticeMod.JETPACK_OVERDRIVE, boost);
+        PacketDistributor.sendToServer(new JetpackInputPayload(jumping, forward, strafe, boost));
     }
 }

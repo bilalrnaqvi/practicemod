@@ -84,9 +84,12 @@ public final class JetpackAnimationController {
         // uniform for the local player, whose attachment holds raw jump input.
         boolean thrusting = wearing && !overheated && !fuelEmpty
                 && Boolean.TRUE.equals(player.getData(PracticeMod.JETPACK_THRUSTING));
-        // The glide flag is written by the flight sim for the local player and by the anim sync
-        // payload for remote players - the same dual path as thrusting.
+        // The glide/surge/coast flags are written by the flight sim for the local player and by the
+        // anim sync payload for remote players - the same dual path as thrusting. They arrive already
+        // gated (fuel, overheat, boost profile), so they need no re-checking here.
         boolean gliding = wearing && Boolean.TRUE.equals(player.getData(PracticeMod.JETPACK_GLIDING));
+        boolean surging = wearing && Boolean.TRUE.equals(player.getData(PracticeMod.JETPACK_SURGING));
+        boolean coasting = wearing && Boolean.TRUE.equals(player.getData(PracticeMod.JETPACK_COASTING));
 
         // Horizontal speed from position deltas rather than getDeltaMovement: the deltas are what
         // actually moved on screen this tick, which also makes them valid for remote players
@@ -95,7 +98,8 @@ public final class JetpackAnimationController {
         double dz = player.getZ() - player.zo;
         float horizontalSpeed = (float) Math.sqrt(dx * dx + dz * dz);
 
-        state.tick(wearing, thrusting, gliding, heat, overheated, lowFuel, fuelEmpty, horizontalSpeed);
+        state.tick(wearing, thrusting, gliding, surging, coasting, heat, overheated, lowFuel, fuelEmpty,
+                horizontalSpeed);
 
         if (wearing) {
             emitFeedback(player, state, heat, overheated, gliding);

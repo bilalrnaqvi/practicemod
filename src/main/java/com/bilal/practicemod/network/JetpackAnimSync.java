@@ -32,6 +32,8 @@ public final class JetpackAnimSync {
         boolean known;
         boolean thrusting;
         boolean gliding;
+        boolean surging;
+        boolean coasting;
         int heatBucket;
         boolean overheated;
     }
@@ -39,26 +41,30 @@ public final class JetpackAnimSync {
     private static final Map<UUID, Sent> LAST_SENT = new HashMap<>();
 
     // Called from JetpackFlightHandler after each server-side sim tick with the effective thrust
-    // (wants && fuel && !overheated) and glide state - the values remote animations need, not the
-    // raw input flag.
-    public static void sync(ServerPlayer player, boolean thrusting, boolean gliding) {
+    // (wants && fuel && !overheated) plus the glide/surge/coast states - the values remote
+    // animations need, not the raw input flags.
+    public static void sync(ServerPlayer player, boolean thrusting, boolean gliding,
+            boolean surging, boolean coasting) {
         float heat = player.getData(PracticeMod.JETPACK_HEAT);
         boolean overheated = Boolean.TRUE.equals(player.getData(PracticeMod.JETPACK_OVERHEATED));
         int heatBucket = (int) (heat / HEAT_BUCKET_SIZE);
 
         Sent last = LAST_SENT.computeIfAbsent(player.getUUID(), key -> new Sent());
         if (last.known && last.thrusting == thrusting && last.gliding == gliding
+                && last.surging == surging && last.coasting == coasting
                 && last.heatBucket == heatBucket && last.overheated == overheated) {
             return;
         }
         last.known = true;
         last.thrusting = thrusting;
         last.gliding = gliding;
+        last.surging = surging;
+        last.coasting = coasting;
         last.heatBucket = heatBucket;
         last.overheated = overheated;
 
         PacketDistributor.sendToPlayersTrackingEntity(player,
-                new JetpackAnimSyncPayload(player.getId(), thrusting, gliding, heat, overheated));
+                new JetpackAnimSyncPayload(player.getId(), thrusting, gliding, surging, coasting, heat, overheated));
     }
 
     // A player that just came into view (or just joined) gets the tracked player's current state
@@ -72,6 +78,8 @@ public final class JetpackAnimSync {
             boolean thrusting = last != null && last.thrusting;
             PacketDistributor.sendToPlayer(viewer, new JetpackAnimSyncPayload(target.getId(), thrusting,
                     Boolean.TRUE.equals(target.getData(PracticeMod.JETPACK_GLIDING)),
+                    Boolean.TRUE.equals(target.getData(PracticeMod.JETPACK_SURGING)),
+                    Boolean.TRUE.equals(target.getData(PracticeMod.JETPACK_COASTING)),
                     target.getData(PracticeMod.JETPACK_HEAT),
                     Boolean.TRUE.equals(target.getData(PracticeMod.JETPACK_OVERHEATED))));
         }

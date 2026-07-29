@@ -41,6 +41,12 @@ public final class JetpackPoseRenderer {
     // Loose-leg roll spread at full hover, in radians (right leg; mirrored for the left).
     private static final float HOVER_LEG_ROLL = 0.03F;
 
+    // Calm neutral the vanilla limb swing is damped toward once ANY flight pose is engaged: arms
+    // hanging at the sides, legs quiet with a gentle trail. Feet leave the ground under thrust, so
+    // the walk/fall cycle underneath has nothing left to describe.
+    private static final float NEUTRAL_ARM_XROT = 0.0F;
+    private static final float NEUTRAL_LEG_TRAIL_DEGREES = 4.0F;
+
     private JetpackPoseRenderer() {
     }
 
@@ -89,9 +95,10 @@ public final class JetpackPoseRenderer {
         poseStack.translate(0.0F, -PIVOT_Y, 0.0F);
     }
 
-    // Per-limb offsets on top of whatever vanilla setupAnim produced. Hover is additive (the idle
-    // arm bob keeps breathing underneath); cruise lerps limbs toward its fixed targets, which also
-    // progressively damps the walk/fall swing as speed rises.
+    // Per-limb offsets on top of whatever vanilla setupAnim produced. The vanilla limb swing is
+    // first damped toward a calm neutral by total engagement (so no flight pose ever has a run
+    // cycle running under it); hover is then additive on that base (the idle arm bob keeps
+    // breathing underneath), and cruise lerps limbs toward its fixed targets.
     public static void applyLimbPose(PlayerModel<?> model, LivingEntity entity) {
         if (!(entity instanceof AbstractClientPlayer player)) {
             return;
@@ -111,9 +118,21 @@ public final class JetpackPoseRenderer {
 
         float hoverWeight = state.renderHoverWeight();
         float cruiseWeight = state.renderCruiseWeight();
-        if (hoverWeight + cruiseWeight < MIN_WEIGHT) {
+        float totalWeight = Mth.clamp(hoverWeight + cruiseWeight, 0.0F, 1.0F);
+        if (totalWeight < MIN_WEIGHT) {
             return;
         }
+
+        // Suppress the vanilla walk cycle FIRST, by total engagement rather than by cruise alone.
+        // The hover offsets below are additive, so without this the setupAnim limb swing keeps
+        // running at full amplitude underneath them and a light boost reads as a mid-air run.
+        // Damping here — before the hover offsets and the cruise lerps — means any engaged flight
+        // pose is built on a calm base, and the vanilla swing fades back in as the pose blends out.
+        float neutralLegTrail = degToRad(NEUTRAL_LEG_TRAIL_DEGREES);
+        model.rightArm.xRot = Mth.lerp(totalWeight, model.rightArm.xRot, NEUTRAL_ARM_XROT);
+        model.leftArm.xRot = Mth.lerp(totalWeight, model.leftArm.xRot, NEUTRAL_ARM_XROT);
+        model.rightLeg.xRot = Mth.lerp(totalWeight, model.rightLeg.xRot, neutralLegTrail);
+        model.leftLeg.xRot = Mth.lerp(totalWeight, model.leftLeg.xRot, neutralLegTrail);
 
         // Hover: arms slightly out and back, legs loose and asymmetric — "balancing on thrust".
         // Sign convention (from vanilla's idle bob / riding poses): arm +zRot = outward on the

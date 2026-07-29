@@ -274,11 +274,15 @@ public final class JetpackAnimationState {
         this.cruisePrev = this.cruiseCur;
         this.cruiseCur += (rawCruise - this.cruiseCur) * (1.0F - (float) Math.exp(-1.0F / smoothingTicks));
 
-        // A coast is still flight, so the pose stays fully engaged through it - cutting the throttle
-        // at speed must never snap the body back to the vanilla falling pose. The blend-out only
-        // starts once the coast itself has decayed, and even a fuel stall leaves the body flying if
+        // A coast is still flight, and so is a glide, so the pose stays fully engaged through both -
+        // cutting the throttle at speed must never snap the body back to the vanilla falling pose.
+        // Gliding matters most for the boost/dip rhythm of light thrust: thrust arrives as a
+        // sawtooth of short pulses, and gating on `thrusting` alone would drop the pose in every gap
+        // between pulses, flashing the vanilla run cycle through. Gliding already means worn,
+        // airborne, fuelled and not thrusting, so it covers exactly those gaps and goes false on
+        // landing, which is where the blend-out belongs. Even a fuel stall leaves the body flying if
         // there's momentum left to fly on (the harsh cut still hits the nozzles).
-        boolean flying = thrusting || coasting;
+        boolean flying = thrusting || gliding || coasting;
         if (this.firedStall && !coasting) {
             // Fuel died mid-thrust with nothing left to carry: drop the body on the same harsh cut
             // as the nozzles.

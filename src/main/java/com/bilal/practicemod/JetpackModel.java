@@ -60,8 +60,8 @@ public class JetpackModel extends HumanoidModel<LivingEntity> {
         root.addOrReplaceChild("left_leg", CubeListBuilder.create(), PartPose.offset(1.9F, 12.0F, 0.0F));
 
         // UV offsets land on regions of jetpack_layer_1.png that are opaque in the current art, so
-        // the model is visible with today's texture; art/ART_PIPELINE.md documents the layout for
-        // repainting. Texture x 32-64 / y 0-16 is transparent and must stay unused.
+        // the model is visible with today's texture. Texture x 32-64 / y 0-16 is transparent and
+        // must stay unused.
         //
         // Boxes are authored relative to each part's pivot so the assembled rest pose is identical
         // to the original single-part model. Pivots are chosen for the motion each part performs:
