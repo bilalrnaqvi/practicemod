@@ -1,0 +1,24 @@
+{
+  "type": "minecraft:crafting_shaped",
+  "category": "equipment",
+  "key": {
+    "L": {
+      "item": "minecraft:leather"
+    },
+    "S": {
+      "item": "minecraft:string"
+    },
+    "I": {
+      "item": "minecraft:iron_ingot"
+    }
+  },
+  "pattern": [
+    "LLL",
+    "SIS",
+    " S "
+  ],
+  "result": {
+    "count": 1,
+    "id": "practicemod:umbrella_glider"
+  }
+}

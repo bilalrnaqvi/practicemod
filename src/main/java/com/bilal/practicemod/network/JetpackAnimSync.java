@@ -34,6 +34,7 @@ public final class JetpackAnimSync {
         boolean gliding;
         boolean surging;
         boolean coasting;
+        boolean hovering;
         int heatBucket;
         boolean overheated;
     }
@@ -41,17 +42,21 @@ public final class JetpackAnimSync {
     private static final Map<UUID, Sent> LAST_SENT = new HashMap<>();
 
     // Called from JetpackFlightHandler after each server-side sim tick with the effective thrust
-    // (wants && fuel && !overheated) plus the glide/surge/coast states - the values remote
-    // animations need, not the raw input flags.
+    // (wants && fuel && !overheated) plus the glide/surge/coast/hover
+    // states - the values remote animations need, not the raw input flags. `hitch` is the one-shot
+    // cosmetic event the owning client relayed up this tick.
     public static void sync(ServerPlayer player, boolean thrusting, boolean gliding,
-            boolean surging, boolean coasting) {
+            boolean surging, boolean coasting, boolean hovering, boolean hitch) {
         float heat = player.getData(PracticeMod.JETPACK_HEAT);
         boolean overheated = Boolean.TRUE.equals(player.getData(PracticeMod.JETPACK_OVERHEATED));
         int heatBucket = (int) (heat / HEAT_BUCKET_SIZE);
 
         Sent last = LAST_SENT.computeIfAbsent(player.getUUID(), key -> new Sent());
-        if (last.known && last.thrusting == thrusting && last.gliding == gliding
-                && last.surging == surging && last.coasting == coasting
+        // A hitch always forces a send: it is a one-tick event, so the change filter would swallow it
+        // whenever it lands in the middle of an otherwise steady hover - which is exactly when hitches
+        // happen.
+        if (!hitch && last.known && last.thrusting == thrusting && last.gliding == gliding
+                && last.surging == surging && last.coasting == coasting && last.hovering == hovering
                 && last.heatBucket == heatBucket && last.overheated == overheated) {
             return;
         }
@@ -60,11 +65,12 @@ public final class JetpackAnimSync {
         last.gliding = gliding;
         last.surging = surging;
         last.coasting = coasting;
+        last.hovering = hovering;
         last.heatBucket = heatBucket;
         last.overheated = overheated;
 
-        PacketDistributor.sendToPlayersTrackingEntity(player,
-                new JetpackAnimSyncPayload(player.getId(), thrusting, gliding, surging, coasting, heat, overheated));
+        PacketDistributor.sendToPlayersTrackingEntity(player, new JetpackAnimSyncPayload(player.getId(),
+                thrusting, gliding, surging, coasting, hovering, hitch, heat, overheated));
     }
 
     // A player that just came into view (or just joined) gets the tracked player's current state
@@ -76,10 +82,14 @@ public final class JetpackAnimSync {
                 && event.getEntity() instanceof ServerPlayer viewer) {
             Sent last = LAST_SENT.get(target.getUUID());
             boolean thrusting = last != null && last.thrusting;
+            // No hitch on a catch-up packet: it is a momentary event, not part of the state a newly
+            // arriving viewer needs to be brought up to date on.
             PacketDistributor.sendToPlayer(viewer, new JetpackAnimSyncPayload(target.getId(), thrusting,
                     Boolean.TRUE.equals(target.getData(PracticeMod.JETPACK_GLIDING)),
                     Boolean.TRUE.equals(target.getData(PracticeMod.JETPACK_SURGING)),
                     Boolean.TRUE.equals(target.getData(PracticeMod.JETPACK_COASTING)),
+                    Boolean.TRUE.equals(target.getData(PracticeMod.JETPACK_HOVERING)),
+                    false,
                     target.getData(PracticeMod.JETPACK_HEAT),
                     Boolean.TRUE.equals(target.getData(PracticeMod.JETPACK_OVERHEATED))));
         }

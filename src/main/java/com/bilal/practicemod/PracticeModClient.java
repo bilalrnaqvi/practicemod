@@ -3,6 +3,8 @@ package com.bilal.practicemod;
 import net.minecraft.client.Minecraft;
 import net.minecraft.client.model.HumanoidModel;
 import net.minecraft.client.model.Model;
+import net.minecraft.client.renderer.BlockEntityWithoutLevelRenderer;
+import net.minecraft.client.renderer.entity.player.PlayerRenderer;
 import net.minecraft.world.entity.EquipmentSlot;
 import net.minecraft.world.entity.LivingEntity;
 import net.minecraft.world.item.ItemStack;
@@ -44,7 +46,7 @@ public class PracticeModClient {
         PracticeMod.LOGGER.info("MINECRAFT NAME >> {}", Minecraft.getInstance().getUser().getName());
     }
 
-    // Adds the jetpack heat/fuel HUD bars above the vanilla status rows. Registered above AIR_LEVEL
+    // Adds the jetpack boost-heat HUD bar above the vanilla status rows. Registered above AIR_LEVEL
     // (the last status row) so the vanilla Gui height trackers are final when the overlay renders.
     @SubscribeEvent
     static void registerGuiLayers(RegisterGuiLayersEvent event) {
@@ -57,23 +59,39 @@ public class PracticeModClient {
         event.register(PracticeMod.JETPACK_MENU.get(), JetpackScreen::new);
     }
 
-    // Makes the open-fueling-menu key rebindable in the vanilla Controls screen.
+    // Makes the jetpack keys (open fueling menu, toggle hover mode) rebindable in the vanilla
+    // Controls screen.
     @SubscribeEvent
     static void registerKeyMappings(RegisterKeyMappingsEvent event) {
         event.register(JetpackClientHandler.OPEN_MENU_KEY);
+        event.register(JetpackClientHandler.HOVER_TOGGLE_KEY);
     }
 
-    // Registers the jetpack's worn-model geometry (tanks + nozzles) under its layer location.
+    // Registers the imported SCAVPACK's worn-model geometry under its layer location.
     @SubscribeEvent
     static void registerLayerDefinitions(EntityRenderersEvent.RegisterLayerDefinitions event) {
         event.registerLayerDefinition(JetpackModel.LAYER, JetpackModel::createLayer);
+    }
+
+    // The main flight visuals are a player render layer rather than world particles. That gives the
+    // layer the already-pitched player PoseStack, and its private JetpackModel copy supplies the
+    // nested animated tank/thruster/emitter transforms needed to keep every plume on its nozzle.
+    @SubscribeEvent
+    static void addPlayerEffectLayers(EntityRenderersEvent.AddLayers event) {
+        for (var skin : event.getSkins()) {
+            PlayerRenderer renderer = event.getSkin(skin);
+            if (renderer != null) {
+                renderer.addLayer(new JetpackEffectLayer(renderer, event.getEntityModels()));
+                renderer.addLayer(new UmbrellaGliderLayer(renderer, event.getEntityModels()));
+            }
+        }
     }
 
     // Swaps the vanilla chestplate model for the custom jetpack model when the armor layer renders
     // the worn jetpack. NeoForge copies pose and part visibility from the vanilla model onto the
     // replacement (root parts only), so the tanks follow torso animation without any setup here;
     // setupModelAnimations then runs after that copy, right before rendering, and poses the
-    // animated child parts (nozzles, tanks, vents) from the wearer's animation state.
+    // animated child parts (tank pods, thrusters, fan, core, and latches) from the wearer's state.
     @SubscribeEvent
     static void registerClientExtensions(RegisterClientExtensionsEvent event) {
         event.registerItem(new IClientItemExtensions() {
@@ -107,5 +125,19 @@ public class PracticeModClient {
                 }
             }
         }, PracticeMod.JETPACK.get());
+
+        event.registerItem(new IClientItemExtensions() {
+            private UmbrellaGliderItemRenderer renderer;
+
+            @Override
+            public BlockEntityWithoutLevelRenderer getCustomRenderer() {
+                if (this.renderer == null) {
+                    Minecraft minecraft = Minecraft.getInstance();
+                    this.renderer = new UmbrellaGliderItemRenderer(
+                            minecraft.getBlockEntityRenderDispatcher(), minecraft.getEntityModels());
+                }
+                return this.renderer;
+            }
+        }, PracticeMod.UMBRELLA_GLIDER.get());
     }
 }

@@ -4,6 +4,8 @@
   "package": "com.bilal.practicemod.mixin",
   "compatibilityLevel": "JAVA_21",
   "client": [
+    "LocalPlayerMixin",
+    "PlayerItemInHandLayerMixin",
     "PlayerModelMixin",
     "PlayerRendererMixin"
   ],

@@ -3,6 +3,8 @@ package com.bilal.practicemod;
 import com.mojang.blaze3d.vertex.PoseStack;
 import com.mojang.math.Axis;
 
+import org.joml.Vector3f;
+
 import net.minecraft.client.Minecraft;
 import net.minecraft.client.model.PlayerModel;
 import net.minecraft.client.player.AbstractClientPlayer;
@@ -47,13 +49,37 @@ public final class JetpackPoseRenderer {
     private static final float NEUTRAL_ARM_XROT = 0.0F;
     private static final float NEUTRAL_LEG_TRAIL_DEGREES = 4.0F;
 
+    // Below this speed (blocks/tick) the travel direction is meaningless, so the last valid one is
+    // held rather than recomputed - otherwise the lean direction spins on floating-point noise as
+    // the wearer comes to a stop.
+    private static final float DIRECTION_EPSILON = 1.0E-4F;
+
+    // Leans smaller than this render as upright; skip the quaternion.
+    private static final float MIN_LEAN_DEGREES = 0.01F;
+
+    // How much of the body roll the head cancels out. A fully levelled head at a steep roll reads
+    // as a snapped neck; half-levelling looks intentional.
+    private static final float HEAD_COUNTER_ROLL_SCALE = 0.5F;
+
     private JetpackPoseRenderer() {
     }
 
-    // Whole-model pitch. PoseStack space here: origin at the feet, Y up, body yaw already applied,
-    // so forward pitch is a plain rotation about X — negative degrees pitch face-down, same
-    // convention as vanilla's elytra rotation in PlayerRenderer.setupRotations.
-    public static void applyBodyRotation(AbstractClientPlayer player, PoseStack poseStack, float partialTick) {
+    // Whole-model lean. PoseStack space here: origin at the feet, Y up, body yaw already applied,
+    // so body-forward is -Z and body-right is +X, and a pure forward pitch is a plain rotation
+    // about X by negative degrees (same convention as vanilla's elytra rotation in
+    // PlayerRenderer.setupRotations).
+    //
+    // The lean is the tilt of the thrust vector, which points along the direction of travel, not
+    // along body-forward - so it is a 2-D quantity: Lf degrees forward plus Lr degrees rightward.
+    // Those are applied as ONE axis-angle rotation about (Lf, 0, Lr), never as composed X and Z
+    // Euler rotations: at the 90-degree cruise pitch a composed pair produces a parasitic yaw
+    // twist. With Lr = 0 the axis collapses to (1, 0, 0) and the rotation is exactly
+    // Axis.XP.rotationDegrees(-Lf), so forward flight and the superman pose are untouched.
+    //
+    // `yBodyRot` is the interpolated body yaw the caller already applied to the stack; vertical
+    // motion is deliberately ignored, since a pure climb has an upright body.
+    public static void applyBodyRotation(AbstractClientPlayer player, PoseStack poseStack, float yBodyRot,
+            float partialTick) {
         JetpackAnimationState state = JetpackAnimationController.get(player.getId());
         if (state == null) {
             return;
@@ -86,12 +112,77 @@ public final class JetpackPoseRenderer {
         float cruise = state.cruiseFactor(partialTick);
         float hoverWeight = weight * (1.0F - cruise);
         float cruiseWeight = weight * cruise;
-        float pitchDeg = cruiseWeight * (float) (double) JetpackClientConfig.MAX_CRUISE_PITCH_DEGREES.get()
-                + hoverWeight * (float) (double) JetpackClientConfig.HOVER_LEAN_DEGREES.get();
-        state.setRenderPose(hoverWeight, cruiseWeight, pitchDeg);
 
+        // Resolve the smoothed world-space travel vector into body-local forward/right. Minecraft
+        // yaw convention: forward = (-sin, cos), right = (-cos, -sin) in world (x, z).
+        float yawRad = yBodyRot * Mth.DEG_TO_RAD;
+        float sin = Mth.sin(yawRad);
+        float cos = Mth.cos(yawRad);
+        float vx = state.leanVelocityX(partialTick);
+        float vz = state.leanVelocityZ(partialTick);
+        float f = vx * -sin + vz * cos;  // blocks/tick along body-forward
+        float r = vx * -cos + vz * -sin; // blocks/tick along body-right
+        float speed = Mth.sqrt(f * f + r * r);
+
+        // Below the epsilon the direction is noise, so hold the last valid one instead of letting
+        // it spin as the wearer settles to a stop.
+        float dirF = state.lastLeanDirForward();
+        float dirR = state.lastLeanDirRight();
+        if (speed > DIRECTION_EPSILON) {
+            dirF = f / speed;
+            dirR = r / speed;
+            state.setLastLeanDir(dirF, dirR);
+        }
+
+        // Ramp the hover-speed directional lean in from a standstill up to where cruise takes over.
+        // cruiseSpeedThreshold is a FRACTION of the server's horizontal cap (same as in the cruise
+        // blend), so the measured speed has to be normalised against that cap before comparing. The
+        // cap is only readable while in a world; without it there is nothing to ramp against, so
+        // the directional term simply stays out and the pose is exactly today's.
+        float cap = JetpackServerConfig.SPEC.isLoaded()
+                ? (float) (double) JetpackServerConfig.GLIDE_HORIZONTAL_CAP.get()
+                : 0.0F;
+        float ramp = 0.0F;
+        if (cap > 0.0F) {
+            float cruiseStart = Math.max(1.0E-4F, (float) (double) JetpackClientConfig.CRUISE_SPEED_THRESHOLD.get());
+            ramp = Mth.clamp(speed / cap / cruiseStart, 0.0F, 1.0F);
+            ramp = ramp * ramp * (3.0F - 2.0F * ramp); // smoothstep, same curve as the cruise blend
+        }
+        float dirLean = hoverWeight * (float) (double) JetpackClientConfig.DIRECTIONAL_LEAN_DEGREES.get() * ramp;
+
+        // Cruise pitch, optionally following travel direction (blend = 1 fully directional, 0 locks
+        // the pitch to body-forward the way it used to be).
+        float blend = (float) (double) JetpackClientConfig.CRUISE_DIRECTIONAL_BLEND.get();
+        float cruiseDeg = cruiseWeight * (float) (double) JetpackClientConfig.MAX_CRUISE_PITCH_DEGREES.get();
+
+        // Climb/descend attitude, folded into the same forward-pitch term as everything else so it
+        // composes into the single axis-angle rotation below instead of adding geometry of its own.
+        // Carried on hoverWeight because it belongs to the upright mode: the cruise pose already aims
+        // the whole body along its travel vector, vertical component included, so layering this on top
+        // there would double-count the climb.
+        float vertical = state.verticalTrim(partialTick);
+        float climbPitchDeg = hoverWeight
+                * (float) (double) JetpackClientConfig.HOVER_CLIMB_PITCH_DEGREES.get() * vertical;
+
+        float leanForwardDeg = hoverWeight * (float) (double) JetpackClientConfig.HOVER_LEAN_DEGREES.get()
+                + climbPitchDeg
+                + dirLean * dirF
+                + cruiseDeg * Mth.lerp(blend, 1.0F, dirF);
+        float leanRightDeg = dirLean * dirR
+                + cruiseDeg * blend * dirR;
+
+        state.setRenderPose(hoverWeight, cruiseWeight, leanForwardDeg, leanRightDeg, vertical);
+
+        float magnitude = Mth.sqrt(leanForwardDeg * leanForwardDeg + leanRightDeg * leanRightDeg);
+        if (magnitude < MIN_LEAN_DEGREES) {
+            state.clearRenderPose();
+            return;
+        }
+
+        float axisX = leanForwardDeg / magnitude;
+        float axisZ = leanRightDeg / magnitude;
         poseStack.translate(0.0F, PIVOT_Y, 0.0F);
-        poseStack.mulPose(Axis.XP.rotationDegrees(-pitchDeg));
+        poseStack.mulPose(Axis.of(new Vector3f(axisX, 0.0F, axisZ)).rotationDegrees(-magnitude));
         poseStack.translate(0.0F, -PIVOT_Y, 0.0F);
     }
 
@@ -100,6 +191,10 @@ public final class JetpackPoseRenderer {
     // cycle running under it); hover is then additive on that base (the idle arm bob keeps
     // breathing underneath), and cruise lerps limbs toward its fixed targets.
     public static void applyLimbPose(PlayerModel<?> model, LivingEntity entity) {
+        // Vanilla setupAnim rewrites head.xRot/yRot every frame but never touches head.zRot, so
+        // this layer owns the head roll outright and must zero it itself — before ANY early
+        // return, or a stale counter-roll from the last engaged frame sticks forever.
+        model.head.zRot = 0.0F;
         if (!(entity instanceof AbstractClientPlayer player)) {
             return;
         }
@@ -150,6 +245,20 @@ public final class JetpackPoseRenderer {
             model.leftLeg.xRot -= hoverWeight * legLoose * 0.5F;
             model.rightLeg.zRot += hoverWeight * HOVER_LEG_ROLL;
             model.leftLeg.zRot -= hoverWeight * HOVER_LEG_ROLL;
+
+            // Climb/descend, on the same signed factor driving the body pitch above: legs trail behind
+            // on the way up and swing forward on the way down, arms flare wider on the way down only.
+            // Additive like the rest of this block, so the splay and the idle bob keep running under
+            // it and the whole attitude eases through neutral as the trim reverses.
+            float vertical = state.renderVerticalTrim();
+            float legSwing = hoverWeight * degToRad(JetpackClientConfig.HOVER_CLIMB_LEG_DEGREES.get()) * vertical;
+            model.rightLeg.xRot += legSwing;
+            model.leftLeg.xRot += legSwing;
+
+            float descendFlare = hoverWeight * degToRad(JetpackClientConfig.HOVER_DESCEND_ARM_DEGREES.get())
+                    * Math.max(0.0F, -vertical);
+            model.rightArm.zRot += descendFlare;
+            model.leftArm.zRot -= descendFlare;
         }
 
         // Cruise: arms driven to cruiseArmSweepDegrees (forward past the head by default), legs
@@ -173,10 +282,15 @@ public final class JetpackPoseRenderer {
             model.leftLeg.zRot = Mth.lerp(cruiseWeight, model.leftLeg.zRot, -CRUISE_LEG_TOGETHER_ROLL);
         }
 
-        // Counter-rotate the head against the body pitch (clamped to a plausible neck bend) so the
-        // wearer keeps looking where the camera looks while the body flattens out.
+        // Counter-rotate the head against the body lean (clamped to a plausible neck bend) so the
+        // wearer keeps looking where the camera looks while the body flattens out. Note the sign
+        // asymmetry between the two terms: LivingEntityRenderer applies poseStack.scale(-1, -1, 1)
+        // before the parts are posed, which is a 180-degree rotation about Z, so part-space X is
+        // flipped relative to PoseStack space while Z is not.
         float maxCounter = degToRad(JetpackClientConfig.HEAD_COUNTER_MAX_DEGREES.get());
         model.head.xRot += Mth.clamp(-state.renderBodyPitchDeg() * Mth.DEG_TO_RAD, -maxCounter, maxCounter);
+        model.head.zRot = Mth.clamp(state.renderBodyRollDeg() * Mth.DEG_TO_RAD, -maxCounter, maxCounter)
+                * HEAD_COUNTER_ROLL_SCALE;
 
         // Vanilla copies the skin's outer layer from the base parts BEFORE this hook ran; re-copy
         // so hat, sleeves and pants follow the pose. (body is never modified here, so the jacket

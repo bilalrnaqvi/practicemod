@@ -22,6 +22,9 @@ public abstract class PlayerRendererMixin {
             at = @At("TAIL"))
     private void practicemod$applyJetpackBodyPitch(AbstractClientPlayer entity, PoseStack poseStack,
             float bob, float yBodyRot, float partialTick, float scale, CallbackInfo ci) {
-        JetpackPoseRenderer.applyBodyRotation(entity, poseStack, partialTick);
+        // yBodyRot is the interpolated body rotation LivingEntityRenderer just used for the
+        // Axis.YP.rotationDegrees(180 - yBodyRot) above, so it is exactly the frame of reference
+        // the pose layer has to resolve the world-space travel vector against.
+        JetpackPoseRenderer.applyBodyRotation(entity, poseStack, yBodyRot, partialTick);
     }
 }

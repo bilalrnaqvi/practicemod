@@ -98,6 +98,56 @@ public class PracticeMod {
     public static final Supplier<AttachmentType<Boolean>> JETPACK_OVERDRIVE = ATTACHMENT_TYPES.register("jetpack_overdrive",
             () -> AttachmentType.builder(() -> Boolean.FALSE).build());
 
+    // Whether the player is holding sneak. Vanilla does sync the entity's shift flag, but it gates it
+    // (LocalPlayer.aiStep suppresses crouching while swimming, riding, or where the pose won't fit),
+    // and hover uses sneak as fine altitude TRIM - it has to answer to the key itself, not to whether
+    // the player is allowed to look crouched. Same reason the boost key is read raw. Set from local
+    // input on the client and from the synced JetpackInputPayload on the server. Not persisted.
+    public static final Supplier<AttachmentType<Boolean>> JETPACK_SNEAKING = ATTACHMENT_TYPES.register("jetpack_sneaking",
+            () -> AttachmentType.builder(() -> Boolean.FALSE).build());
+
+    // Whether HOVER MODE is armed - the H-key toggle, not whether it is currently holding altitude.
+    // Armed on the ground does nothing (hover is dormant until the player is airborne); see
+    // JETPACK_HOVERING for the gated result. Toggled by the client and mirrored to the server through
+    // JetpackInputPayload, same dual-sided pattern as JETPACK_THRUSTING. Not persisted, and cleared
+    // outright when the jetpack comes off (like heat) so a fresh pack is never secretly armed.
+    public static final Supplier<AttachmentType<Boolean>> JETPACK_HOVER_MODE = ATTACHMENT_TYPES.register("jetpack_hover_mode",
+            () -> AttachmentType.builder(() -> Boolean.FALSE).build());
+
+    // Whether hover is actually engaged this tick: armed, airborne, fuelled, not stalled. The gated
+    // counterpart to JETPACK_HOVER_MODE, in the same relationship as JETPACK_SURGING is to
+    // JETPACK_OVERDRIVE. Computed identically on both sides by JetpackFlightHandler (client predicts
+    // the local player); remote viewers get it via JetpackAnimSyncPayload. Drives the idling pack
+    // animation, the HUD indicator, and the client-side hitch roll.
+    public static final Supplier<AttachmentType<Boolean>> JETPACK_HOVERING = ATTACHMENT_TYPES.register("jetpack_hovering",
+            () -> AttachmentType.builder(() -> Boolean.FALSE).build());
+
+    // The altitude the hover spring is pulling toward, in world Y. Transient working state of the PD
+    // controller, held per side: initialized to the player's own Y when hover first engages, trimmed
+    // by jump/sneak, and re-clamped to within hoverTargetLeash of the player's ACTUAL Y every tick so
+    // pinning against a ceiling can never bank up error. Not persisted (and never synced - both sides
+    // derive it from the same inputs).
+    public static final Supplier<AttachmentType<Double>> JETPACK_HOVER_TARGET_Y = ATTACHMENT_TYPES.register("jetpack_hover_target_y",
+            () -> AttachmentType.builder(() -> 0.0).build());
+
+    // The player's Y at the previous hover tick, so the controller can difference it for the realized
+    // vertical velocity its damping term needs. Deliberately NOT Entity#yo: that is set at the top of
+    // the entity tick, and a ServerPlayer never runs travel() - its position arrives from client move
+    // packets, which the server processes AFTER the level ticks. So yo minus getY() is ~0 on the
+    // server every tick, which would leave the server's spring undamped and quietly non-identical to
+    // the client's. Differencing our own per-tick sample measures the same real movement on both
+    // sides. Not persisted.
+    public static final Supplier<AttachmentType<Double>> JETPACK_HOVER_PREV_Y = ATTACHMENT_TYPES.register("jetpack_hover_prev_y",
+            () -> AttachmentType.builder(() -> 0.0).build());
+
+    // One-shot "the pack hitched this tick" flag, carrying only the cosmetic event - never the
+    // impulse, which is applied client-side by JetpackHoverHitch and never simulated on the server.
+    // Set by the owning client, relayed through JetpackInputPayload to the server and back out via
+    // JetpackAnimSyncPayload so other players see the twitch too. Read and cleared each tick by
+    // JetpackAnimationController (clients) and JetpackFlightHandler (server). Not persisted.
+    public static final Supplier<AttachmentType<Boolean>> JETPACK_HITCH = ATTACHMENT_TYPES.register("jetpack_hitch",
+            () -> AttachmentType.builder(() -> Boolean.FALSE).build());
+
     // Whether the surge is actually engaged this tick: OVERDRIVE profile, thrusting, boost key held.
     // Unlike JETPACK_OVERDRIVE (raw key state) this is the gated result, so it already accounts for
     // fuel, overheat and the boost profile. Computed identically on both sides by JetpackFlightHandler
@@ -120,17 +170,36 @@ public class PracticeMod {
     public static final Supplier<AttachmentType<Boolean>> JETPACK_GLIDING = ATTACHMENT_TYPES.register("jetpack_gliding",
             () -> AttachmentType.builder(() -> Boolean.FALSE).build());
 
-    // Jetpack heat, 0 = cold up to heatMax (default 100) = overheat stall. Simulated identically on
-    // client and server each tick from the shared thrusting state (same pattern as JETPACK_THRUSTING),
-    // so the local player needs no syncing; remote viewers get it via JetpackAnimSyncPayload.
-    // Not persisted: heat is transient and resets across relogs, which is fine for a lockout timer.
+    // Jetpack boost heat, 0 = cold up to heatMax (default 200). Entering the final-7% red zone latches
+    // the thrust lockout. Simulated identically
+    // on client and server each tick from the shared surge state, so the local player needs no
+    // syncing; remote viewers get it via JetpackAnimSyncPayload. Not persisted: heat is transient
+    // and resets across relogs, which is fine for a brief lockout timer.
     public static final Supplier<AttachmentType<Float>> JETPACK_HEAT = ATTACHMENT_TYPES.register("jetpack_heat",
             () -> AttachmentType.builder(() -> 0.0F).build());
 
-    // Latched when heat reaches heatMax; cleared once heat falls back below the configured recovery
-    // threshold. While latched the jetpack refuses to thrust (a lockout, not damage).
+    // Latched when heat enters the final-7% red zone; cleared once heat falls below the recovery
+    // threshold. While latched, both sprint and non-sprint thrust are disabled.
     public static final Supplier<AttachmentType<Boolean>> JETPACK_OVERHEATED = ATTACHMENT_TYPES.register("jetpack_overheated",
             () -> AttachmentType.builder(() -> Boolean.FALSE).build());
+
+    // Authoritative umbrella state. Unlike the jetpack's animation payload, this attachment uses
+    // NeoForge's entity-attachment sync: the server sends every open/close edge to the owning
+    // player and all tracking clients, and also includes the current value when a player first
+    // comes into view. It is deliberately transient so reconnecting or respawning can never leave
+    // an umbrella open without a fresh, valid airborne deployment.
+    public static final Supplier<AttachmentType<Boolean>> UMBRELLA_GLIDER_DEPLOYED = ATTACHMENT_TYPES.register(
+            "umbrella_glider_deployed",
+            () -> AttachmentType.builder(() -> Boolean.FALSE).sync(ByteBufCodecs.BOOL).build());
+
+    // Raw movement inputs used by the shared client prediction / server simulation. These are
+    // clamped as soon as the input payload reaches the server and are not persisted or broadcast;
+    // only the player who owns the movement controller needs them.
+    public static final Supplier<AttachmentType<Float>> UMBRELLA_GLIDER_FORWARD = ATTACHMENT_TYPES.register(
+            "umbrella_glider_forward", () -> AttachmentType.builder(() -> 0.0F).build());
+
+    public static final Supplier<AttachmentType<Float>> UMBRELLA_GLIDER_STRAFE = ATTACHMENT_TYPES.register(
+            "umbrella_glider_strafe", () -> AttachmentType.builder(() -> 0.0F).build());
 
     // Fuel in the jetpack's tank, stored on the ItemStack itself so fuel travels with the item
     // (dropped, chested, etc.). A float because burn and regen are fractional per tick. Written by
@@ -138,6 +207,14 @@ public class PracticeMod {
     // JetpackFuelHandler for refueling and JetpackFlightHandler for burn/regen.
     public static final DeferredHolder<DataComponentType<?>, DataComponentType<Float>> JETPACK_FUEL = DATA_COMPONENTS.registerComponentType("fuel",
             builder -> builder.persistent(Codec.floatRange(0.0F, Float.MAX_VALUE)).networkSynchronized(ByteBufCodecs.FLOAT));
+
+    // Blaze Powder stored inside the jetpack through its fueling menu. Keeping the reserve on the
+    // ItemStack makes the menu slot persistent across closing, unequipping, dropping and chests.
+    // The count is capped to one ordinary item stack by JetpackFuelHandler.
+    public static final DeferredHolder<DataComponentType<?>, DataComponentType<Integer>> JETPACK_BLAZE_POWDER =
+            DATA_COMPONENTS.registerComponentType("stored_blaze_powder",
+                    builder -> builder.persistent(Codec.intRange(0, 64))
+                            .networkSynchronized(ByteBufCodecs.VAR_INT));
 
     // The fueling menu opened with the G keybind while the jetpack is worn (JetpackClientHandler
     // sends OpenJetpackMenuPayload; the server validates and opens). Operates on the chest slot,
@@ -170,6 +247,12 @@ public class PracticeMod {
     public static final DeferredItem<JetpackItem> JETPACK = ITEMS.register("jetpack",
             () -> new JetpackItem(JETPACK_ARMOR_MATERIAL, ArmorItem.Type.CHESTPLATE,
                     new Item.Properties().durability(ArmorItem.Type.CHESTPLATE.getDurability(15))));
+
+    // A held item rather than equipment. Having it in the selected hotbar slot or the offhand is
+    // the server-validated permission to deploy; it never occupies or emulates an armor/Curios-style
+    // slot, and it does nothing from a stowed inventory slot.
+    public static final DeferredItem<UmbrellaGliderItem> UMBRELLA_GLIDER = ITEMS.register("umbrella_glider",
+            () -> new UmbrellaGliderItem(new Item.Properties().stacksTo(1)));
 
     // Creates a creative tab with the id "practicemod:example_tab" for the example item, that is placed after the combat tab
     public static final DeferredHolder<CreativeModeTab, CreativeModeTab> EXAMPLE_TAB = CREATIVE_MODE_TABS.register("example_tab", () -> CreativeModeTab.builder()
@@ -241,6 +324,7 @@ public class PracticeMod {
         }
         if (event.getTabKey() == CreativeModeTabs.TOOLS_AND_UTILITIES) {
             event.accept(JETPACK);
+            event.accept(UMBRELLA_GLIDER);
         }
     }
 

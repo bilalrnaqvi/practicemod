@@ -2,8 +2,6 @@ package com.bilal.practicemod;
 
 import net.minecraft.network.chat.Component;
 import net.minecraft.server.level.ServerPlayer;
-import net.minecraft.sounds.SoundEvents;
-import net.minecraft.sounds.SoundSource;
 import net.minecraft.world.SimpleContainer;
 import net.minecraft.world.SimpleMenuProvider;
 import net.minecraft.world.entity.EquipmentSlot;
@@ -15,11 +13,11 @@ import net.minecraft.world.inventory.Slot;
 import net.minecraft.world.item.ItemStack;
 import net.minecraft.world.item.Items;
 
-// The jetpack fueling menu: one blaze-powder slot plus the standard player inventory, operating
-// on the jetpack in the player's CHEST slot (opened with the G keybind while worn - see
-// JetpackClientHandler / JetpackNetworking). While open, powder in the slot drips into the tank
-// one piece at a time (broadcastChanges below), so refueling is a visible fill, and works even
-// mid-hover. Closing the menu returns any unconsumed powder.
+// The jetpack fueling menu: one persistent Blaze Powder storage slot plus the standard player
+// inventory, operating on the jetpack in the player's CHEST slot. The slot accepts a normal stack
+// and writes its count onto the jetpack ItemStack, so its contents survive closing the menu,
+// unequipping the pack, dropping it, and storing it in a chest. Flight consumes the stored powder
+// only when the hidden current fuel reserve needs another charge.
 public class JetpackMenu extends AbstractContainerMenu {
 
     public static final int POWDER_SLOT = 0;
@@ -27,13 +25,9 @@ public class JetpackMenu extends AbstractContainerMenu {
     private static final int HOTBAR_START = 28;
     private static final int SLOT_END = 37;
 
-    // One powder consumed at most every this many ticks while the menu is open (4/s: a full
-    // default tank from empty is 4 powder, ~1s - gradual enough to watch the gauge climb).
-    private static final int DRIP_INTERVAL_TICKS = 5;
-
-    private final SimpleContainer fuelInput = new SimpleContainer(1);
+    private final SimpleContainer fuelInput;
     private final Inventory playerInventory;
-    private int dripCooldown = DRIP_INTERVAL_TICKS;
+    private boolean syncingFuelInput;
 
     // Client-side mirror of the tank fraction, in permille. The chest armor slot is not a slot of
     // this menu, so its data component does not sync through the container; a DataSlot carries the
@@ -44,6 +38,18 @@ public class JetpackMenu extends AbstractContainerMenu {
     public JetpackMenu(int containerId, Inventory playerInventory) {
         super(PracticeMod.JETPACK_MENU.get(), containerId);
         this.playerInventory = playerInventory;
+        this.fuelInput = new SimpleContainer(1) {
+            @Override
+            public void setChanged() {
+                super.setChanged();
+                ItemStack jetpack = JetpackMenu.this.getJetpack();
+                if (!JetpackMenu.this.syncingFuelInput && jetpack.getItem() instanceof JetpackItem) {
+                    JetpackFuelHandler.setStoredBlazePowder(jetpack, this.getItem(0).getCount());
+                }
+            }
+        };
+
+        syncFuelInputFromJetpack();
 
         this.addSlot(new Slot(this.fuelInput, 0, 80, 22) {
             @Override
@@ -88,28 +94,30 @@ public class JetpackMenu extends AbstractContainerMenu {
         return this.fuelPermilleDisplay / 1000.0F;
     }
 
-    // The drip refuel. broadcastChanges runs once per tick on the SERVER for the open menu (the
-    // client-side mirror never calls it), which makes it the natural home for container-tick
-    // logic without any extra event subscription.
+    // Hover can keep burning fuel while this screen is open on a multiplayer server. If that burn
+    // consumes a stored powder, reflect the component's new count back into the visible slot before
+    // normal menu broadcasting. The guard prevents that mirror write from being mistaken for a
+    // player insertion and restoring the old count.
     @Override
     public void broadcastChanges() {
-        if (--this.dripCooldown <= 0) {
-            this.dripCooldown = DRIP_INTERVAL_TICKS;
-            ItemStack jetpack = getJetpack();
-            ItemStack powder = this.fuelInput.getItem(0);
-            if (jetpack.getItem() instanceof JetpackItem && !powder.isEmpty()
-                    && JetpackFuelHandler.getFuel(jetpack) < JetpackFuelHandler.getFuelCapacity()) {
-                powder.shrink(1);
-                this.fuelInput.setChanged();
-                // The final powder may overfill; setFuel clamps to capacity.
-                JetpackFuelHandler.setFuel(jetpack, JetpackFuelHandler.getFuel(jetpack)
-                        + (float) (double) JetpackServerConfig.FUEL_PER_BLAZE_POWDER.get());
-                Player player = this.playerInventory.player;
-                player.level().playSound(null, player.getX(), player.getY(), player.getZ(),
-                        SoundEvents.BUCKET_FILL_LAVA, SoundSource.PLAYERS, 0.4F, 1.2F);
-            }
-        }
+        syncFuelInputFromJetpack();
         super.broadcastChanges();
+    }
+
+    private void syncFuelInputFromJetpack() {
+        int storedPowder = JetpackFuelHandler.getStoredBlazePowder(getJetpack());
+        if (this.fuelInput.getItem(0).getCount() == storedPowder) {
+            return;
+        }
+
+        this.syncingFuelInput = true;
+        try {
+            this.fuelInput.setItem(0, storedPowder > 0
+                    ? new ItemStack(Items.BLAZE_POWDER, storedPowder)
+                    : ItemStack.EMPTY);
+        } finally {
+            this.syncingFuelInput = false;
+        }
     }
 
     @Override
@@ -149,10 +157,4 @@ public class JetpackMenu extends AbstractContainerMenu {
         return result;
     }
 
-    @Override
-    public void removed(Player player) {
-        super.removed(player);
-        // Unconsumed powder goes back to the player (or drops), the crafting-table convention.
-        this.clearContainer(player, this.fuelInput);
-    }
 }
