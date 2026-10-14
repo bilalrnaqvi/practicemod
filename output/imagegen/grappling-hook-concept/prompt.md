@@ -1,0 +1,16 @@
+# Generation prompt
+
+Tool: built-in imagegen. Reference inputs: output/umbrella-held/model-review.png and docs/art-references/compact-racer.png.
+
+Use case: stylized-concept
+Create a polished landscape concept-art approval sheet for a Minecraft NeoForge mod grappling hook, titled "GRAPPLE / MOMENTUM CONCEPT 01". This is a proposed design, not implemented gameplay. Arkham Knight-inspired grapple acceleration and rooftop fling, translated into an original Minecraft mechanical tool; no Batman logos, costume, cape or wings.
+Style: authentic Blockbench-buildable chunky cuboids, stepped silhouettes, sparse crisp pixel textures, broad flat panels, selective angular slopes; no photorealism, smooth modern gun surfaces or excessive micro-detail. Dark desaturated navy presentation background, cream typography, amber diagram arrows, spacious professional layout.
+Upper left dominant large three-quarter product view: compact one-handed grapnel launcher, short chunky graphite rectangular housing, small inset brass panels, dark wooden pistol grip, visible octagonal side cable reel, short steel muzzle with a docked folding three-prong steel grapnel. Original industrial traversal equipment, not a rifle. Restrained orange release lever. Steel claws have stepped hooked ends and folded profile; black cable, no ammunition magazine, no scope. Hand-sized silhouette about one Minecraft forearm long.
+Upper right matching smaller SIDE, TOP and FRONT orthographic views of the SAME design, consistent reel, grip, muzzle and folded claw proportions. Small detached deployed claw detail with three open steel prongs and cable attachment. Concise labels "FOLDING CLAW", "CABLE REEL", "RELEASE LEVER".
+Bottom third: a clear four-stage left-to-right traversal storyboard over pale minimal block-built rooftop silhouettes with normal Minecraft Steve-like block characters, no Batman. Panel 1 "01 / LATCH": player below rooftop fires taut cable to a high ledge. Panel 2 "02 / PULL": fast diagonal upward player motion toward ledge, amber motion arrow and taut cable. Panel 3 "03 / FLING": cable disconnected, player travels upward AND forward above the ledge with a sweeping amber ballistic arc; no floating devices. Panel 4 "04 / GLIDE": same moving player holds an open octagonal gold-and-orange umbrella overhead by a dark wooden shaft, brass hub, clear forward gently descending path. Umbrella is the only gliding equipment. No cable in stages 3 or 4. Keep figures small enough to show the motion path clearly.
+Footer exact text: "Pull builds speed. Release carries momentum. Umbrella controls the glide." Small subtitle "PROPOSED DESIGN — FOR REVIEW".
+Image references: provided umbrella review is a material palette and Minecraft body-scale reference only; preserve its gold/orange brass dark-wood identity in the storyboard umbrella. Provided white vehicle is a geometry/style reference only, do not depict vehicle or copy white palette onto launcher. Render art, not a web page.
+
+## Correction pass
+
+Remove the misplaced CABLE REEL and RELEASE LEVER labels and their leader lines/dots from the detached claw detail. Preserve the FOLDING CLAW label and all other design, layout, storyboard and typography.

@@ -21,6 +21,8 @@ Concept sheets should include a large three-quarter view and matching orthograph
 - **Mechanical Dolphin / Panorama:** blue armor, white belly, cyan lights, slim rectangular sensor eyes, prone cockpit, swept fins and jointed tail. No anthropomorphic pupils/brows. Canopy opening remains deferred. Reference: `docs/art-references/mechanical-dolphin.png` shows integrated geometry, not the latest fin motion.
 - **Other equipment:** preserve each canonical model's palette and established silhouette; consult `docs/SOURCE_MAP.md`.
 
+- **Grappling hook:** selected original Grapple / Momentum Concept 01: graphite rectangular launcher, steel folding three-prong claw, exposed side reel, restrained brass trim and dark wooden grip. Reference: `docs/art-references/grapple-momentum.png`. Current item is a gameplay blockout; final geometry and animation remain to be reviewed. See `GRAPPLING_HOOK.md`.
+
 ## Acceptance and source ownership
 
 Check real player fit and usable access before detailing. Keep furniture fronts,

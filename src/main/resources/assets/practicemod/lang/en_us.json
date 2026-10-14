@@ -130,5 +130,8 @@
   "key.practicemod.skate_revert": "Revert on landing",
   "key.practicemod.skate_special": "Special: The 900",
   "key.practicemod.submarine_cabin": "Leave submarine pilot seat",
-  "container.practicemod.submarine_storage": "Submarine Storage"
+  "container.practicemod.submarine_storage": "Submarine Storage",
+  "item.practicemod.grappling_hook": "Grappling Hook",
+  "item.practicemod.grappling_hook.use_hint": "Hold use: latch and pull. Release: fling with momentum.",
+  "item.practicemod.grappling_hook.glide_hint": "Keep an umbrella in your offhand to glide after the fling."
 }

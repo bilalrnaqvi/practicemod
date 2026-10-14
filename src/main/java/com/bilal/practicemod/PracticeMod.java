@@ -248,6 +248,15 @@ public class PracticeMod {
             "umbrella_glider_deployed",
             () -> AttachmentType.builder(() -> Boolean.FALSE).sync(ByteBufCodecs.BOOL).build());
 
+    public static final Supplier<AttachmentType<GrappleState>> GRAPPLE_STATE = ATTACHMENT_TYPES.register(
+            "grapple_state", () -> AttachmentType.builder(() -> GrappleState.IDLE).sync(GrappleState.STREAM_CODEC).build());
+    public static final Supplier<AttachmentType<Integer>> GRAPPLE_TICKS = ATTACHMENT_TYPES.register(
+            "grapple_ticks", () -> AttachmentType.builder(() -> 0).build());
+    public static final Supplier<AttachmentType<Float>> GRAPPLE_GLIDE_CAP = ATTACHMENT_TYPES.register(
+            "grapple_glide_cap", () -> AttachmentType.builder(() -> 0.0F).build());
+    public static final Supplier<AttachmentType<Integer>> GRAPPLE_COAST_TICKS = ATTACHMENT_TYPES.register(
+            "grapple_coast_ticks", () -> AttachmentType.builder(() -> 0).build());
+
     // Raw movement inputs used by the shared client prediction / server simulation. These are
     // clamped as soon as the input payload reaches the server and are not persisted or broadcast;
     // only the player who owns the movement controller needs them.
@@ -314,6 +323,9 @@ public class PracticeMod {
     // slot, and it does nothing from a stowed inventory slot.
     public static final DeferredItem<UmbrellaGliderItem> UMBRELLA_GLIDER = ITEMS.register("umbrella_glider",
             () -> new UmbrellaGliderItem(new Item.Properties().stacksTo(1)));
+
+    public static final DeferredItem<GrapplingHookItem> GRAPPLING_HOOK = ITEMS.register("grappling_hook",
+            () -> new GrapplingHookItem(new Item.Properties().stacksTo(1)));
 
     // Include every registered item so new gadgets automatically appear in the mod's tab.
     public static final DeferredHolder<CreativeModeTab, CreativeModeTab> TRAVERSAL_GADGETS_TAB = CREATIVE_MODE_TABS.register("example_tab", () -> CreativeModeTab.builder()

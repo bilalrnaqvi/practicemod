@@ -93,6 +93,7 @@ public final class UmbrellaGliderHandler {
 
     private static boolean isValidBaseState(Player player) {
         return isHoldingUmbrella(player)
+                && !GrappleHandler.active(player)
                 && player.isAlive()
                 && !player.onGround()
                 && !player.isInWater()
@@ -149,6 +150,15 @@ public final class UmbrellaGliderHandler {
         x *= drag;
         z *= drag;
         double capScale = UmbrellaGliderPhysics.horizontalCapScale(x, z);
+        float grappleCap = player.getData(PracticeMod.GRAPPLE_GLIDE_CAP);
+        if (grappleCap > UmbrellaGliderPhysics.HORIZONTAL_SPEED_CAP) {
+            // Only a recent grapple release grants excess speed; ordinary umbrella use is unchanged.
+            // Never accelerate back to a stored allowance after a collision has already slowed us.
+            double cap = GrapplePhysics.glideCap(Math.min(grappleCap, movement.horizontalDistance()));
+            player.setData(PracticeMod.GRAPPLE_GLIDE_CAP, (float) cap);
+            double speed = Math.hypot(x, z);
+            capScale = speed > cap ? cap / speed : 1.0;
+        }
         player.setDeltaMovement(x * capScale,
                 UmbrellaGliderPhysics.nextVerticalVelocity(movement.y), z * capScale);
     }
