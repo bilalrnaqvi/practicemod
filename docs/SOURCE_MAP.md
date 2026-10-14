@@ -6,6 +6,7 @@ Generated Java geometry and runtime textures are committed alongside their edita
 
 | Feature | Canonical editable source | Exporter (run from repository root) | Runtime geometry / notes |
 | --- | --- | --- | --- |
+| White Horizon yacht (static art) | `src/main/blockbench/white_horizon/white_horizon.bbmodel` with embedded pixel tiles and metadata | `python3 tools/yacht/export_white_horizon.py` | `src/main/yacht/white_horizon/`: OBJ/MTL, scene, layout, collision and render-section metadata; [model handoff](yacht/WHITE_HORIZON_MODEL.md). No runtime vehicle yet. |
 | Jetpack | `src/main/blockbench/SCAVPACK_MK1.bbmodel` | `node tools/generate_scavpack_geometry.mjs src/main/blockbench/SCAVPACK_MK1.bbmodel > src/main/java/com/bilal/practicemod/ScavpackMk1Geometry.java` | `ScavpackMk1Geometry.java`; flight/pose/HUD code remains hand-authored |
 | Umbrella glider | `src/main/blockbench/mechanical_octagonal_glider.bbmodel` | `node tools/generate_umbrella_glider_geometry.mjs src/main/blockbench/mechanical_octagonal_glider.bbmodel src/main/resources/assets/practicemod/textures/entity/umbrella_glider > src/main/java/com/bilal/practicemod/UmbrellaGliderGeometry.java` | `UmbrellaGliderGeometry.java` |
 | Rocket boots | `src/main/blockbench/rocket_boots_mk1.bbmodel` | `python3 tools/generate_rocket_boots_geometry.py` | `RocketBootsGeometry.java` |

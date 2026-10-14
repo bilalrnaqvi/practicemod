@@ -1,8 +1,9 @@
 # White Horizon — shared yacht design and implementation plan
 
-Status: planning only, 2026-10-14. The user approved the **visual direction**, not the
-layout below or its technical implementation. No yacht gameplay, model, dependency,
-or moving-floor prototype has been built in this stage.
+Status: technical plan with a completed static modeling stage, 2026-10-14. See the
+[editable model handoff](WHITE_HORIZON_MODEL.md) for actual assets, layout corrections
+and static validation. The visual direction is approved; the finished model is not yet
+user-approved. Yacht gameplay, dependencies and moving-floor prototype remain unimplemented.
 
 Target: Minecraft **1.21.1**, NeoForge **21.1.235**, Java **21**, Mojang names with
 Parchment **2024.11.17**. Start with a luxurious player-owned social space for about
@@ -326,17 +327,17 @@ empty of occupants, and after explicit inventory handling; never silently void c
 
 ## Model, texture and collision organization
 
-The implementation should be a block-based rigid hull with authored trim, not one
-massive entity model. Proposed canonical assets (future files, not created here):
+The runtime implementation should be a block-based rigid hull, not one massive
+entity model. The static construction source now exists at
+`src/main/blockbench/white_horizon/white_horizon.bbmodel`. Its embedded material tiles,
+local coordinates and authored metadata are canonical. The scoped exporter
+`python3 tools/yacht/export_white_horizon.py` produces the OBJ, cuboid scene, texture
+copies, local collision boxes, layout and render sections under
+`src/main/yacht/white_horizon/`. See the [model handoff](WHITE_HORIZON_MODEL.md).
 
-- `src/main/yacht/white_horizon.layout.json`: stations, rooms, structural block palette,
-  stairs, doors, clearance volumes, named anchors and schema version.
-- `src/main/blockbench/white_horizon/`: editable hull trim, rail, glass-frame, furniture,
-  bridge and canopy modules; module origins documented in a manifest.
-- A scoped exporter produces the local structure/template, block models, textures,
-  simplified collider data where needed, and an anchor/clearance audit. Update
-  [SOURCE_MAP](../SOURCE_MAP.md) when actual source/export paths exist; do not invent
-  a runnable exporter command in advance.
+A future runtime exporter must translate the construction shapes into a supported
+moving-block representation and registered block palette. The static OBJ is not a
+Minecraft structure. No runtime geometry or gameplay is implied by these exports.
 
 Group by hull shell, deck slabs, stair cores, partitions, glass, rails, furnishings,
 pool and technical fittings; subdivide by deck and roughly 16-block longitudinal
@@ -372,9 +373,10 @@ when no nearby interior interaction is visible. Profile before setting final bud
 
 ## Bounded prototype and implementation sequence
 
-Do not begin detailed yacht modeling until phases 0–2 meet their exit criteria. These
-are engineering gates, not extra user approval stops. Timeboxes are estimates and
-limits on scope, not a promise to implement this stage now.
+Phases 0–2 remain the gates for runtime integration. The static modeling stage has
+independently completed its structural/circulation review and furnishing; that work
+does not satisfy the moving-floor or multiplayer gates. Timeboxes are estimates and
+limits on prototype scope.
 
 | Phase | Bounded work | Exit evidence |
 | --- | --- | --- |
@@ -410,12 +412,12 @@ If the backend fails any essential contact/packet/serialization gate, isolate a 
 reproduction and assess a pinned fix or alternate framework. Do not proceed with full
 art on the assumption that a giant rideable entity will be an equivalent fallback.
 
-## Current verification and handoff
+## Planning-stage verification and handoff
 
 This stage inspected the approved image, relevant current guidance and vehicle source;
 checked upstream dependency/version claims; and added this brief plus a curated copy
 of the reference. Local links and reference-byte equality are checked separately.
 No Gradle build or game launch is required for these documentation/reference changes.
 No collision, performance, appearance, first-person or multiplayer property proposed
-here has been tested. The next concrete work item is phase 0 followed by the small
-phase 1 fixture, not the finished yacht.
+here has been tested. For current static-art evidence, use the modeling handoff linked above. The next
+technical work item remains phase 0 followed by the small phase 1 fixture.

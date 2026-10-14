@@ -1,0 +1,345 @@
+{
+  "phase": "furnished",
+  "source_sha256": "87fdf487a79f01a1f186da88ea3ca939777cb9ddb912d8e4fa4dae55a7ac2de1",
+  "elements": 12417,
+  "player_aabb": [
+    0.6,
+    1.8,
+    0.6
+  ],
+  "route_step_tolerance": 0.6,
+  "samples": 3707,
+  "routes": [
+    {
+      "route": "swim_to_main_-6",
+      "samples": 46,
+      "min_headroom": null,
+      "pass": true
+    },
+    {
+      "route": "swim_to_main_4",
+      "samples": 46,
+      "min_headroom": null,
+      "pass": true
+    },
+    {
+      "route": "A_-8_to_-4",
+      "samples": 111,
+      "min_headroom": 3.0,
+      "pass": true
+    },
+    {
+      "route": "A_-4_to_0",
+      "samples": 111,
+      "min_headroom": 3.0,
+      "pass": true
+    },
+    {
+      "route": "A_0_to_4",
+      "samples": 111,
+      "min_headroom": 3.0,
+      "pass": true
+    },
+    {
+      "route": "B_-4_to_0",
+      "samples": 111,
+      "min_headroom": 3.0,
+      "pass": true
+    },
+    {
+      "route": "B_0_to_4",
+      "samples": 111,
+      "min_headroom": 3.0,
+      "pass": true
+    },
+    {
+      "route": "B_4_to_8",
+      "samples": 111,
+      "min_headroom": 3.0,
+      "pass": true
+    },
+    {
+      "route": "guest_port_12_entry",
+      "samples": 25,
+      "min_headroom": 3.0,
+      "pass": true
+    },
+    {
+      "route": "guest_starboard_12_entry",
+      "samples": 25,
+      "min_headroom": 3.0,
+      "pass": true
+    },
+    {
+      "route": "guest_port_26_entry",
+      "samples": 25,
+      "min_headroom": 3.0,
+      "pass": true
+    },
+    {
+      "route": "guest_starboard_26_entry",
+      "samples": 25,
+      "min_headroom": 3.0,
+      "pass": true
+    },
+    {
+      "route": "guest_port_34_entry",
+      "samples": 25,
+      "min_headroom": 3.0,
+      "pass": true
+    },
+    {
+      "route": "guest_starboard_34_entry",
+      "samples": 25,
+      "min_headroom": 3.0,
+      "pass": true
+    },
+    {
+      "route": "linen_access",
+      "samples": 21,
+      "min_headroom": 3.0,
+      "pass": true
+    },
+    {
+      "route": "storage_access",
+      "samples": 21,
+      "min_headroom": 3.0,
+      "pass": true
+    },
+    {
+      "route": "lower_corridor",
+      "samples": 253,
+      "min_headroom": 3.0,
+      "pass": true
+    },
+    {
+      "route": "main_center",
+      "samples": 309,
+      "min_headroom": 3.0,
+      "pass": true
+    },
+    {
+      "route": "main_promenade_-6.875",
+      "samples": 349,
+      "min_headroom": 3.5,
+      "pass": true
+    },
+    {
+      "route": "main_promenade_6.875",
+      "samples": 349,
+      "min_headroom": 3.5,
+      "pass": true
+    },
+    {
+      "route": "upper_gallery_-4",
+      "samples": 106,
+      "min_headroom": 3.5,
+      "pass": true
+    },
+    {
+      "route": "upper_gallery_4",
+      "samples": 106,
+      "min_headroom": 3.5,
+      "pass": true
+    },
+    {
+      "route": "upper_a_to_gallery",
+      "samples": 96,
+      "min_headroom": 3.5,
+      "pass": true
+    },
+    {
+      "route": "upper_gallery_to_bridge",
+      "samples": 56,
+      "min_headroom": 3.5,
+      "pass": true
+    },
+    {
+      "route": "roof_b_arrival",
+      "samples": 135,
+      "min_headroom": 3.0,
+      "pass": true
+    },
+    {
+      "route": "beach_sofa_2_14_access",
+      "samples": 21,
+      "min_headroom": 3.5,
+      "pass": true
+    },
+    {
+      "route": "dining_bench_a_2_19_access",
+      "samples": 21,
+      "min_headroom": 3.5,
+      "pass": true
+    },
+    {
+      "route": "dining_bench_b_2_24_access",
+      "samples": 21,
+      "min_headroom": 3.5,
+      "pass": true
+    },
+    {
+      "route": "salon_port_-4.5_29_access",
+      "samples": 25,
+      "min_headroom": 3.5,
+      "pass": true
+    },
+    {
+      "route": "salon_starboard_2.5_29_access",
+      "samples": 25,
+      "min_headroom": 3.5,
+      "pass": true
+    },
+    {
+      "route": "salon_port_-4.5_36_access",
+      "samples": 25,
+      "min_headroom": 3.5,
+      "pass": true
+    },
+    {
+      "route": "salon_starboard_2.5_36_access",
+      "samples": 25,
+      "min_headroom": 3.5,
+      "pass": true
+    },
+    {
+      "route": "quiet_lounge_-4.5_45_access",
+      "samples": 25,
+      "min_headroom": 3.5,
+      "pass": true
+    },
+    {
+      "route": "bow_sunseat_-4_53_access",
+      "samples": 21,
+      "min_headroom": null,
+      "pass": true
+    },
+    {
+      "route": "bow_sunseat_2_53_access",
+      "samples": 21,
+      "min_headroom": null,
+      "pass": true
+    },
+    {
+      "route": "terrace_bench_1.5_14_access",
+      "samples": 21,
+      "min_headroom": null,
+      "pass": true
+    },
+    {
+      "route": "terrace_bench_1.5_21_access",
+      "samples": 21,
+      "min_headroom": null,
+      "pass": true
+    },
+    {
+      "route": "roof_lounge_-4.5_38_access",
+      "samples": 25,
+      "min_headroom": 3.0,
+      "pass": true
+    },
+    {
+      "route": "roof_lounge_2.5_38_access",
+      "samples": 25,
+      "min_headroom": 3.0,
+      "pass": true
+    },
+    {
+      "route": "guest_bed_-1_12_access",
+      "samples": 46,
+      "min_headroom": 3.0,
+      "pass": true
+    },
+    {
+      "route": "guest_bed_1_12_access",
+      "samples": 46,
+      "min_headroom": 3.0,
+      "pass": true
+    },
+    {
+      "route": "guest_bed_-1_26_access",
+      "samples": 46,
+      "min_headroom": 3.0,
+      "pass": true
+    },
+    {
+      "route": "guest_bed_1_26_access",
+      "samples": 46,
+      "min_headroom": 3.0,
+      "pass": true
+    },
+    {
+      "route": "guest_bed_-1_34_access",
+      "samples": 46,
+      "min_headroom": 3.0,
+      "pass": true
+    },
+    {
+      "route": "guest_bed_1_34_access",
+      "samples": 46,
+      "min_headroom": 3.0,
+      "pass": true
+    },
+    {
+      "route": "machinery_center",
+      "samples": 169,
+      "min_headroom": 3.0,
+      "pass": true
+    },
+    {
+      "route": "lower_to_A",
+      "samples": 35,
+      "min_headroom": 3.5,
+      "pass": true
+    },
+    {
+      "route": "main_to_A",
+      "samples": 35,
+      "min_headroom": 3.5,
+      "pass": true
+    },
+    {
+      "route": "lower_to_B",
+      "samples": 15,
+      "min_headroom": 3.0,
+      "pass": true
+    },
+    {
+      "route": "main_to_B",
+      "samples": 15,
+      "min_headroom": 3.5,
+      "pass": true
+    },
+    {
+      "route": "upper_to_B",
+      "samples": 15,
+      "min_headroom": 3.5,
+      "pass": true
+    },
+    {
+      "route": "main_bar_access",
+      "samples": 39,
+      "min_headroom": 3.5,
+      "pass": true
+    },
+    {
+      "route": "pool_exit",
+      "samples": 32,
+      "min_headroom": 3.5,
+      "pass": true
+    },
+    {
+      "route": "captain_reach",
+      "samples": 45,
+      "min_headroom": 3.5,
+      "pass": true
+    }
+  ],
+  "failures": [],
+  "solid_intersections": 0,
+  "outliner_coverage": true,
+  "texture_density_pixels_per_block": 16,
+  "axis_aligned_cuboids_only": true,
+  "pass": true,
+  "limitations": "Sampled static AABB support/clearance only; open doors. No dynamic contacts, Minecraft stair shapes, fluids, latency or full navigable-space proof."
+}

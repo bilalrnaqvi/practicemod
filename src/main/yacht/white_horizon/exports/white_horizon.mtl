@@ -1,0 +1,53 @@
+newmtl quartz
+Kd 1 1 1
+map_Kd textures/quartz.png
+newmtl quartz_shadow
+Kd 1 1 1
+map_Kd textures/quartz_shadow.png
+newmtl wood
+Kd 1 1 1
+map_Kd textures/wood.png
+newmtl darkwood
+Kd 1 1 1
+map_Kd textures/darkwood.png
+newmtl frame
+Kd 1 1 1
+map_Kd textures/frame.png
+newmtl glass
+Kd 1 1 1
+map_Kd textures/glass.png
+d .28
+newmtl water
+Kd 1 1 1
+map_Kd textures/water.png
+d .65
+newmtl tile
+Kd 1 1 1
+map_Kd textures/tile.png
+newmtl linen
+Kd 1 1 1
+map_Kd textures/linen.png
+newmtl navy
+Kd 1 1 1
+map_Kd textures/navy.png
+newmtl lamp
+Kd 1 1 1
+map_Kd textures/lamp.png
+newmtl metal
+Kd 1 1 1
+map_Kd textures/metal.png
+newmtl leaf
+Kd 1 1 1
+map_Kd textures/leaf.png
+newmtl soil
+Kd 1 1 1
+map_Kd textures/soil.png
+newmtl screen
+Kd 1 1 1
+map_Kd textures/screen.png
+newmtl carpet
+Kd 1 1 1
+map_Kd textures/carpet.png
+newmtl brass
+Kd 1 1 1
+map_Kd textures/brass.png
