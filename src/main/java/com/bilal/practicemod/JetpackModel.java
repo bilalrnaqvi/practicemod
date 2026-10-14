@@ -311,7 +311,7 @@ public class JetpackModel extends HumanoidModel<LivingEntity> {
         poseStack.popPose();
     }
 
-    private static void renderCrossedPlume(PoseStack poseStack, VertexConsumer consumer,
+    static void renderCrossedPlume(PoseStack poseStack, VertexConsumer consumer,
             float rootY, float width, float length, int alpha) {
         float halfWidth = width * 0.5F;
         float tipY = rootY + length;

@@ -1,0 +1,293 @@
+{
+  "schema_version": 2,
+  "model": "deepseeker.bbmodel",
+  "coordinate_system": "Blockbench authoring coordinates, Y up, forward -Z; normally 16 model units = one block before existing entity scale. Convert using the actual mod pipeline.",
+  "texture_size": [
+    2048,
+    2048
+  ],
+  "render_contract": "Attach to named screen bone, then use plane coordinates relative to its pivot. Do not apply the bone rotation twice. Text/image right is overlay_right and up is overlay_up. Dynamic overlay covers entire tile; base screen geometry stays visible behind it. Use small offset only, depth testing enabled.",
+  "depth_semantics": "Vertical distance from submarine pilot eye position to the surface of the connected water column above it, 1 block displayed as 1 m. Unknown or unloaded surface => --; out of water => 0. This is not seabed clearance. Resolve waterlogged/cave water consistently with existing fluid logic.",
+  "screens": [
+    {
+      "id": "depth",
+      "bone": "screen_depth",
+      "parent_bone": "center_display",
+      "surface_cube": "screen_depth_surface",
+      "cube_uuid": "4d559a98-5efc-4e23-be46-0df840f2dd17",
+      "bone_uuid": "b08df426-0260-bc93-188b-4024983b2ba2",
+      "bone_origin_model_units": [
+        0.0,
+        46.69,
+        -98.56
+      ],
+      "bone_rotation_degrees_xyz": [
+        0,
+        0,
+        0
+      ],
+      "visible_face": "south",
+      "panel_width_model_units": 7.344,
+      "panel_height_model_units": 3.74,
+      "overlay_top_left_relative_to_bone_pivot": [
+        -3.672,
+        1.87,
+        0.1428
+      ],
+      "overlay_right": [
+        1,
+        0,
+        0
+      ],
+      "overlay_up": [
+        0,
+        1,
+        0
+      ],
+      "overlay_normal": [
+        0,
+        0,
+        1
+      ],
+      "overlay_offset_model_units": 0.0204,
+      "pixel_canvas": [
+        128,
+        64
+      ],
+      "atlas_rect_pixels": [
+        16,
+        1280,
+        144,
+        1344
+      ],
+      "fallback": "NO DATA",
+      "presentation": {
+        "type": "scrolling_depth_history",
+        "history_seconds": 60,
+        "sample_hz": 2,
+        "capacity": 120,
+        "time_axis": "oldest left; now right",
+        "depth_axis": "0 m at top, increasing depth downward",
+        "plot_rect_pixels": [
+          20,
+          17,
+          122,
+          47
+        ],
+        "current_value": "compact top right",
+        "unknown_behavior": "gap in trace; NO DATA; do not invent history",
+        "scale": "rounded upper depth bound, minimum 10 m, expands immediately, shrinks only after a sustained smaller window; label bottom bound"
+      }
+    },
+    {
+      "id": "sonar",
+      "bone": "screen_sonar",
+      "parent_bone": "left_console",
+      "surface_cube": "screen_sonar_surface",
+      "cube_uuid": "40972333-1240-4c75-807e-078c328169e5",
+      "bone_uuid": "53e04de8-ec3b-9402-77ba-65ce19245aa2",
+      "bone_origin_model_units": [
+        -14.4,
+        44.684,
+        -96.0666667
+      ],
+      "bone_rotation_degrees_xyz": [
+        -15,
+        0,
+        0
+      ],
+      "visible_face": "south",
+      "panel_width_model_units": 4.488,
+      "panel_height_model_units": 3.808,
+      "overlay_top_left_relative_to_bone_pivot": [
+        -2.244,
+        4.352,
+        0.2652
+      ],
+      "overlay_right": [
+        1,
+        0,
+        0
+      ],
+      "overlay_up": [
+        0,
+        1,
+        0
+      ],
+      "overlay_normal": [
+        0,
+        0,
+        1
+      ],
+      "overlay_offset_model_units": 0.0204,
+      "pixel_canvas": [
+        64,
+        64
+      ],
+      "atlas_rect_pixels": [
+        176,
+        1280,
+        240,
+        1344
+      ],
+      "fallback": "STBY; static scope sweep, no contact data",
+      "presentation": {
+        "type": "circular_sonar",
+        "center_pixels": [
+          32,
+          34
+        ],
+        "radius_pixels": 24,
+        "mode": "standby",
+        "runtime": "Replace static scope tile with animated sweep and genuine obstacle returns; no baked contact dots."
+      }
+    },
+    {
+      "id": "power",
+      "bone": "screen_power",
+      "parent_bone": "left_console",
+      "surface_cube": "screen_power_surface",
+      "cube_uuid": "ba0b9c3a-bf11-4d2b-9c34-c2497a672869",
+      "bone_uuid": "88df59a2-4f6b-8605-394d-a85cf4b6de24",
+      "bone_origin_model_units": [
+        -14.4,
+        44.7996,
+        -93.9586667
+      ],
+      "bone_rotation_degrees_xyz": [
+        0,
+        0,
+        0
+      ],
+      "visible_face": "up",
+      "panel_width_model_units": 3.536,
+      "panel_height_model_units": 2.04,
+      "overlay_top_left_relative_to_bone_pivot": [
+        -1.768,
+        0.1088,
+        -1.02
+      ],
+      "overlay_right": [
+        1,
+        0,
+        0
+      ],
+      "overlay_up": [
+        0,
+        0,
+        -1
+      ],
+      "overlay_normal": [
+        0,
+        1,
+        0
+      ],
+      "overlay_offset_model_units": 0.0204,
+      "pixel_canvas": [
+        64,
+        32
+      ],
+      "atlas_rect_pixels": [
+        496,
+        1280,
+        560,
+        1312
+      ],
+      "fallback": "OFFLINE / --"
+    },
+    {
+      "id": "systems",
+      "bone": "screen_systems",
+      "parent_bone": "right_console",
+      "surface_cube": "screen_systems_surface",
+      "cube_uuid": "5c717367-1b86-449d-a0f4-0820cb1632ff",
+      "bone_uuid": "75def76b-523c-ae3b-961b-5fc755a8c507",
+      "bone_origin_model_units": [
+        14.4,
+        44.7996,
+        -93.9586667
+      ],
+      "bone_rotation_degrees_xyz": [
+        0,
+        0,
+        0
+      ],
+      "visible_face": "up",
+      "panel_width_model_units": 3.536,
+      "panel_height_model_units": 2.04,
+      "overlay_top_left_relative_to_bone_pivot": [
+        -1.768,
+        0.1088,
+        -1.02
+      ],
+      "overlay_right": [
+        1,
+        0,
+        0
+      ],
+      "overlay_up": [
+        0,
+        0,
+        -1
+      ],
+      "overlay_normal": [
+        0,
+        1,
+        0
+      ],
+      "overlay_offset_model_units": 0.0204,
+      "pixel_canvas": [
+        64,
+        32
+      ],
+      "atlas_rect_pixels": [
+        656,
+        1280,
+        720,
+        1312
+      ],
+      "fallback": "OFFLINE / --"
+    }
+  ],
+  "instruments": [
+    {
+      "id": "attitude",
+      "parent_bone": "right_console",
+      "housing_bone": "attitude_indicator",
+      "mount_origin_model_units": [
+        7,
+        12.4,
+        -15.5
+      ],
+      "mount_rotation_degrees_xyz": [
+        -15,
+        0,
+        0
+      ],
+      "roll_bone": "attitude_roll",
+      "roll_pivot_model_units": [
+        7,
+        14.2,
+        -15.15
+      ],
+      "roll_axis": "local Z",
+      "pitch_card_bone": "attitude_pitch_card",
+      "fixed_reference_bone": "attitude_fixed_marker",
+      "enamel_atlas_rect_pixels": [
+        160,
+        1400,
+        224,
+        1464
+      ],
+      "rest_pose": "level horizon, 0 pitch and roll",
+      "runtime": "Counter-rotate the attitude_roll card to indicate actual vehicle roll relative to the fixed silhouette. Use a bounded/clipped pitch-card texture or masked render layer for pitch displacement; do not translate the unmasked card beyond the bezel. Map signs against actual mod axes. Do not animate fixed housing or silhouette with the card. No runtime behavior is baked into the model."
+    }
+  ],
+  "hull_scale_from_original": 3,
+  "aft_compaction": {
+    "start_model_units": -58.5,
+    "scale": 0.5,
+    "bulkhead_front_model_units": -58.5,
+    "description": "Fixed cockpit; sealed compact machinery behind pilot"
+  }
+}

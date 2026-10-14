@@ -63,28 +63,36 @@ public class JetpackClientHandler {
         // Both consumeClick loops must drain even when not wearing the jetpack, or presses would
         // queue up and fire the moment one is equipped - the menu popping open, or hover silently
         // arming itself.
-        boolean wearing = JetpackFlightHandler.isWearingJetpack(player);
-        updateFuelNotification(minecraft, player, wearing);
+        boolean wearingJetpack = JetpackFlightHandler.isWearingJetpack(player);
+        boolean wearingRocketBoots = RocketBootsFlightHandler.isWearingRocketBoots(player);
+        boolean wearingFlightGear = wearingJetpack || wearingRocketBoots;
+        updateFuelNotification(minecraft, player, wearingJetpack);
 
         while (OPEN_MENU_KEY.consumeClick()) {
-            if (wearing) {
+            if (wearingJetpack) {
                 PacketDistributor.sendToServer(OpenJetpackMenuPayload.INSTANCE);
             }
         }
 
         boolean hoverMode = Boolean.TRUE.equals(player.getData(PracticeMod.JETPACK_HOVER_MODE));
         while (HOVER_TOGGLE_KEY.consumeClick()) {
-            if (wearing) {
+            if (wearingJetpack) {
                 hoverMode = !hoverMode;
             }
+        }
+        if (!wearingJetpack) {
+            hoverMode = false;
         }
 
         // Ticked unconditionally, BEFORE the wearing guard: a hitch in flight has to keep ageing out
         // even if the pack comes off mid-decay, or its clock freezes and the camera roll sticks
         // forever. It no-ops on its own whenever hover isn't engaged.
         boolean hitch = JetpackHoverHitch.tick(player);
+        if (!wearingJetpack) {
+            hitch = false;
+        }
 
-        if (!wearing) {
+        if (!wearingFlightGear) {
             return;
         }
 
@@ -95,7 +103,7 @@ public class JetpackClientHandler {
         // clears the sprint FLAG when a player is airborne without forward input, and gates the
         // crouch flag on whether the crouch pose actually fits. Both would make flaky flight inputs,
         // and hover leans on sneak as altitude trim.
-        boolean boost = Minecraft.getInstance().options.keySprint.isDown();
+        boolean boost = wearingJetpack && Minecraft.getInstance().options.keySprint.isDown();
         boolean sneaking = player.input.shiftKeyDown;
 
         player.setData(PracticeMod.JETPACK_THRUSTING, jumping);

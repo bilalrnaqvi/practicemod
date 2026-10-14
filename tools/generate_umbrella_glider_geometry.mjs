@@ -83,21 +83,24 @@ function meshLine(element) {
     const vertexIndices = new Map(vertexEntries.map(([uuid], index) => [uuid, index]));
     const vertices = vertexEntries.flatMap(([, vertex]) => [vertex[0], -vertex[1], vertex[2]]);
     const faces = Object.values(element.faces).map((face) => {
-        const indices = face.vertices.map((uuid) => vertexIndices.get(uuid));
+        // Reflecting Y changes handedness. Reverse the face and its UVs together so
+        // the winding and lighting normals still point out of the canopy.
+        const corners = [...face.vertices].reverse();
+        const indices = corners.map((uuid) => vertexIndices.get(uuid));
         if (indices.some((index) => index === undefined) || (indices.length !== 3 && indices.length !== 4)) {
             throw new Error(`unsupported face in mesh ${element.name}`);
         }
         while (indices.length < 4) {
             indices.push(indices[indices.length - 1]);
         }
-        const uv = face.vertices.flatMap((uuid) => face.uv[uuid].map((value) => value / 16));
+        const uv = corners.flatMap((uuid) => face.uv[uuid].map((value) => value / 16));
         while (uv.length < 8) {
             uv.push(uv[uv.length - 2], uv[uv.length - 1]);
         }
 
-        const a = element.vertices[face.vertices[0]];
-        const b = element.vertices[face.vertices[1]];
-        const c = element.vertices[face.vertices[2]];
+        const a = element.vertices[corners[0]];
+        const b = element.vertices[corners[1]];
+        const c = element.vertices[corners[2]];
         const ta = [a[0], -a[1], a[2]];
         const tb = [b[0], -b[1], b[2]];
         const tc = [c[0], -c[1], c[2]];

@@ -30,7 +30,7 @@ final class UmbrellaGliderItemRenderer extends BlockEntityWithoutLevelRenderer {
         this.model.render(poseStack, index -> ItemRenderer.getFoilBufferDirect(bufferSource,
                         RenderType.entityCutoutNoCull(UmbrellaGliderModel.TEXTURES[index]),
                         false, stack.hasFoil()), packedLight, packedOverlay,
-                CLOSED_ROTATION, CLOSED_SCALE);
+                CLOSED_ROTATION, CLOSED_SCALE, 0.0F);
         poseStack.popPose();
     }
 }

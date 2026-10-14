@@ -1,0 +1,87 @@
+{
+  "parent": "builtin/entity",
+  "textures": {
+    "particle": "practicemod:entity/crag"
+  },
+  "display": {
+    "gui": {
+      "rotation": [
+        25,
+        135,
+        0
+      ],
+      "scale": [
+        0.3228,
+        0.3228,
+        0.3228
+      ]
+    },
+    "ground": {
+      "scale": [
+        0.269,
+        0.269,
+        0.269
+      ]
+    },
+    "fixed": {
+      "rotation": [
+        0,
+        90,
+        0
+      ],
+      "scale": [
+        0.3026,
+        0.3026,
+        0.3026
+      ]
+    },
+    "thirdperson_righthand": {
+      "rotation": [
+        0,
+        90,
+        0
+      ],
+      "scale": [
+        0.269,
+        0.269,
+        0.269
+      ]
+    },
+    "thirdperson_lefthand": {
+      "rotation": [
+        0,
+        -90,
+        0
+      ],
+      "scale": [
+        0.269,
+        0.269,
+        0.269
+      ]
+    },
+    "firstperson_righthand": {
+      "rotation": [
+        0,
+        135,
+        0
+      ],
+      "scale": [
+        0.269,
+        0.269,
+        0.269
+      ]
+    },
+    "firstperson_lefthand": {
+      "rotation": [
+        0,
+        -135,
+        0
+      ],
+      "scale": [
+        0.269,
+        0.269,
+        0.269
+      ]
+    }
+  }
+}

@@ -214,7 +214,13 @@ public final class JetpackPoseRenderer {
         float hoverWeight = state.renderHoverWeight();
         float cruiseWeight = state.renderCruiseWeight();
         float totalWeight = Mth.clamp(hoverWeight + cruiseWeight, 0.0F, 1.0F);
-        if (totalWeight < MIN_WEIGHT) {
+        boolean rocketBootsPose = RocketBootsFlightHandler.isWearingRocketBoots(player)
+                && !JetpackFlightHandler.isWearingJetpack(player);
+        boolean rocketBootsThrusting = rocketBootsPose
+                && Boolean.TRUE.equals(player.getData(PracticeMod.ROCKET_BOOTS_THRUSTING));
+        // Even if a very slow configured blend-in leaves the animation weight near zero on its
+        // first tick, an active boot burn must suppress the vanilla run cycle immediately.
+        if (totalWeight < MIN_WEIGHT && !rocketBootsThrusting) {
             return;
         }
 
@@ -223,11 +229,12 @@ public final class JetpackPoseRenderer {
         // running at full amplitude underneath them and a light boost reads as a mid-air run.
         // Damping here — before the hover offsets and the cruise lerps — means any engaged flight
         // pose is built on a calm base, and the vanilla swing fades back in as the pose blends out.
+        float legDampingWeight = rocketBootsThrusting ? 1.0F : totalWeight;
         float neutralLegTrail = degToRad(NEUTRAL_LEG_TRAIL_DEGREES);
         model.rightArm.xRot = Mth.lerp(totalWeight, model.rightArm.xRot, NEUTRAL_ARM_XROT);
         model.leftArm.xRot = Mth.lerp(totalWeight, model.leftArm.xRot, NEUTRAL_ARM_XROT);
-        model.rightLeg.xRot = Mth.lerp(totalWeight, model.rightLeg.xRot, neutralLegTrail);
-        model.leftLeg.xRot = Mth.lerp(totalWeight, model.leftLeg.xRot, neutralLegTrail);
+        model.rightLeg.xRot = Mth.lerp(legDampingWeight, model.rightLeg.xRot, neutralLegTrail);
+        model.leftLeg.xRot = Mth.lerp(legDampingWeight, model.leftLeg.xRot, neutralLegTrail);
 
         // Hover: arms slightly out and back, legs loose and asymmetric — "balancing on thrust".
         // Sign convention (from vanilla's idle bob / riding poses): arm +zRot = outward on the
@@ -240,11 +247,16 @@ public final class JetpackPoseRenderer {
             model.rightArm.xRot += armBack;
             model.leftArm.xRot += armBack;
 
-            float legLoose = degToRad(JetpackClientConfig.HOVER_LEG_LOOSE_DEGREES.get());
-            model.rightLeg.xRot += hoverWeight * legLoose;
-            model.leftLeg.xRot -= hoverWeight * legLoose * 0.5F;
-            model.rightLeg.zRot += hoverWeight * HOVER_LEG_ROLL;
-            model.leftLeg.zRot -= hoverWeight * HOVER_LEG_ROLL;
+            // The boots use this same ordinary-thrust attitude, but their emitters are attached to
+            // the feet. Keep both legs on the calm trail established above so the exhaust remains
+            // stable and the wearer never appears to kick while boosting.
+            if (!rocketBootsPose) {
+                float legLoose = degToRad(JetpackClientConfig.HOVER_LEG_LOOSE_DEGREES.get());
+                model.rightLeg.xRot += hoverWeight * legLoose;
+                model.leftLeg.xRot -= hoverWeight * legLoose * 0.5F;
+                model.rightLeg.zRot += hoverWeight * HOVER_LEG_ROLL;
+                model.leftLeg.zRot -= hoverWeight * HOVER_LEG_ROLL;
+            }
 
             // Climb/descend, on the same signed factor driving the body pitch above: legs trail behind
             // on the way up and swing forward on the way down, arms flare wider on the way down only.
@@ -252,8 +264,10 @@ public final class JetpackPoseRenderer {
             // it and the whole attitude eases through neutral as the trim reverses.
             float vertical = state.renderVerticalTrim();
             float legSwing = hoverWeight * degToRad(JetpackClientConfig.HOVER_CLIMB_LEG_DEGREES.get()) * vertical;
-            model.rightLeg.xRot += legSwing;
-            model.leftLeg.xRot += legSwing;
+            if (!rocketBootsPose) {
+                model.rightLeg.xRot += legSwing;
+                model.leftLeg.xRot += legSwing;
+            }
 
             float descendFlare = hoverWeight * degToRad(JetpackClientConfig.HOVER_DESCEND_ARM_DEGREES.get())
                     * Math.max(0.0F, -vertical);

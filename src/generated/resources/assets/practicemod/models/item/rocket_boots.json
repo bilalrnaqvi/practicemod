@@ -1,0 +1,75 @@
+{
+  "parent": "minecraft:builtin/entity",
+  "display": {
+    "firstperson_lefthand": {
+      "rotation": [
+        0,
+        35,
+        0
+      ],
+      "scale": [
+        0.7,
+        0.7,
+        0.7
+      ]
+    },
+    "firstperson_righthand": {
+      "rotation": [
+        0,
+        -35,
+        0
+      ],
+      "scale": [
+        0.7,
+        0.7,
+        0.7
+      ]
+    },
+    "ground": {
+      "scale": [
+        0.5,
+        0.5,
+        0.5
+      ]
+    },
+    "gui": {
+      "rotation": [
+        20,
+        -35,
+        0
+      ],
+      "scale": [
+        1.1,
+        1.1,
+        1.1
+      ]
+    },
+    "thirdperson_lefthand": {
+      "rotation": [
+        75,
+        0,
+        0
+      ],
+      "scale": [
+        0.5,
+        0.5,
+        0.5
+      ]
+    },
+    "thirdperson_righthand": {
+      "rotation": [
+        75,
+        0,
+        0
+      ],
+      "scale": [
+        0.5,
+        0.5,
+        0.5
+      ]
+    }
+  },
+  "textures": {
+    "particle": "practicemod:entity/rocket_boots_mk1"
+  }
+}

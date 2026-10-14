@@ -18,6 +18,21 @@ public class ModItemModelProvider extends ItemModelProvider {
     protected void registerModels() {
         basicItem(PracticeMod.JETPACK.get());
 
+        var boots = getBuilder("rocket_boots")
+                .parent(new ModelFile.UncheckedModelFile("builtin/entity"))
+                .texture("particle", modLoc("entity/rocket_boots_mk1"));
+        boots.transforms().transform(ItemDisplayContext.GUI)
+                .rotation(20.0F, -35.0F, 0.0F).scale(1.1F).end()
+                .transform(ItemDisplayContext.GROUND).scale(0.5F).end()
+                .transform(ItemDisplayContext.THIRD_PERSON_RIGHT_HAND)
+                .rotation(75.0F, 0.0F, 0.0F).scale(0.5F).end()
+                .transform(ItemDisplayContext.THIRD_PERSON_LEFT_HAND)
+                .rotation(75.0F, 0.0F, 0.0F).scale(0.5F).end()
+                .transform(ItemDisplayContext.FIRST_PERSON_RIGHT_HAND)
+                .rotation(0.0F, -35.0F, 0.0F).scale(0.7F).end()
+                .transform(ItemDisplayContext.FIRST_PERSON_LEFT_HAND)
+                .rotation(0.0F, 35.0F, 0.0F).scale(0.7F).end();
+
         var umbrella = getBuilder("umbrella_glider")
                 .parent(new ModelFile.UncheckedModelFile("builtin/entity"))
                 .guiLight(GuiLight.FRONT)

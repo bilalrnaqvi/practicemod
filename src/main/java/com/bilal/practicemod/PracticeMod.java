@@ -21,9 +21,12 @@ import net.minecraft.network.chat.Component;
 import net.minecraft.resources.ResourceLocation;
 import net.minecraft.sounds.SoundEvents;
 import net.minecraft.world.food.FoodProperties;
+import net.minecraft.world.entity.EntityType;
+import net.minecraft.world.entity.MobCategory;
 import net.minecraft.world.inventory.MenuType;
 import net.minecraft.world.item.ArmorItem;
 import net.minecraft.world.item.ArmorMaterial;
+import net.minecraft.world.item.ArmorMaterials;
 import net.minecraft.world.item.BlockItem;
 import net.minecraft.world.item.CreativeModeTab;
 import net.minecraft.world.item.CreativeModeTabs;
@@ -74,6 +77,43 @@ public class PracticeMod {
     public static final DeferredRegister.DataComponents DATA_COMPONENTS = DeferredRegister.createDataComponents(Registries.DATA_COMPONENT_TYPE, MODID);
     // Create a Deferred Register to hold MenuTypes which will all be registered under the "practicemod" namespace
     public static final DeferredRegister<MenuType<?>> MENUS = DeferredRegister.create(Registries.MENU, MODID);
+
+    public static final DeferredRegister<EntityType<?>> ENTITIES = DeferredRegister.create(Registries.ENTITY_TYPE, MODID);
+    public static final DeferredHolder<EntityType<?>, EntityType<SubmarineEntity>> SUBMARINE_ENTITY =
+            ENTITIES.register("submarine", () -> EntityType.Builder.<SubmarineEntity>of(SubmarineEntity::new, MobCategory.MISC)
+                    .sized(1.375F, 0.5625F).eyeHeight(0.5625F).clientTrackingRange(10)
+                    .build(MODID + ":submarine"));
+    public static final DeferredItem<SubmarineItem> SUBMARINE = ITEMS.register("submarine",
+            () -> new SubmarineItem(new Item.Properties().stacksTo(1)));
+
+    public static final DeferredHolder<EntityType<?>, EntityType<SkateboardEntity>> SKATEBOARD_ENTITY =
+            ENTITIES.register("skateboard", () -> EntityType.Builder.<SkateboardEntity>of(SkateboardEntity::new, MobCategory.MISC)
+                    .sized(0.8F, 0.25F).eyeHeight(0.25F).clientTrackingRange(10).updateInterval(1)
+                    .build(MODID + ":skateboard"));
+    public static final DeferredItem<SkateboardItem> SKATEBOARD = ITEMS.register("skateboard",
+            () -> new SkateboardItem(new Item.Properties().stacksTo(1)));
+
+    public static final DeferredHolder<EntityType<?>, EntityType<JetskiEntity>> JETSKI_ENTITY =
+            ENTITIES.register("jetski", () -> EntityType.Builder.<JetskiEntity>of(JetskiEntity::new, MobCategory.MISC)
+                    .sized(1.15F * JetskiEntity.HULL_SCALE, 0.65F * JetskiEntity.HULL_SCALE)
+                    .eyeHeight(0.65F * JetskiEntity.HULL_SCALE).clientTrackingRange(12).updateInterval(1)
+                    .build(MODID + ":jetski"));
+    public static final DeferredItem<JetskiItem> JETSKI = ITEMS.register("jetski",
+            () -> new JetskiItem(new Item.Properties().stacksTo(1)));
+
+    public static final DeferredHolder<EntityType<?>, EntityType<AtvEntity>> ATV_ENTITY =
+            ENTITIES.register("atv", () -> EntityType.Builder.<AtvEntity>of(AtvEntity::new, MobCategory.MISC)
+                    .sized(2.2F, 2.4F).eyeHeight(1.9F).clientTrackingRange(12).updateInterval(1)
+                    .build(MODID + ":atv"));
+    public static final DeferredItem<AtvItem> ATV = ITEMS.register("atv",
+            () -> new AtvItem(new Item.Properties().stacksTo(1)));
+
+    public static final DeferredHolder<EntityType<?>, EntityType<MechanicalDolphinEntity>> MECHANICAL_DOLPHIN_ENTITY =
+            ENTITIES.register("mechanical_dolphin", () -> EntityType.Builder.<MechanicalDolphinEntity>of(MechanicalDolphinEntity::new, MobCategory.MISC)
+                    .sized(1.1F, .8F).eyeHeight(.7F).clientTrackingRange(12).updateInterval(1)
+                    .build(MODID + ":mechanical_dolphin"));
+    public static final DeferredItem<MechanicalDolphinItem> MECHANICAL_DOLPHIN = ITEMS.register("mechanical_dolphin",
+            () -> new MechanicalDolphinItem(new Item.Properties().stacksTo(1)));
 
     // Tracks whether a player is currently holding jump while wearing the jetpack. Set directly from
     // local input on the client, and from the synced JetpackInputPayload on the server - see
@@ -183,6 +223,22 @@ public class PracticeMod {
     public static final Supplier<AttachmentType<Boolean>> JETPACK_OVERHEATED = ATTACHMENT_TYPES.register("jetpack_overheated",
             () -> AttachmentType.builder(() -> Boolean.FALSE).build());
 
+    // Effective rocket-boots thrust. The owning client predicts it and the server computes the same
+    // value; attachment sync supplies the server result to remote clients for the boot-plume layer.
+    public static final Supplier<AttachmentType<Boolean>> ROCKET_BOOTS_THRUSTING = ATTACHMENT_TYPES.register(
+            "rocket_boots_thrusting",
+            () -> AttachmentType.builder(() -> Boolean.FALSE).sync(ByteBufCodecs.BOOL).build());
+
+    // Transient heat is mirrored by the owning client and server from the same per-tick input. It is
+    // intentionally tied to wearing the boots rather than persisted on the item: unequipping fully
+    // resets the short-burst device, matching the jetpack's existing transient heat behavior.
+    public static final Supplier<AttachmentType<Float>> ROCKET_BOOTS_HEAT = ATTACHMENT_TYPES.register(
+            "rocket_boots_heat", () -> AttachmentType.builder(() -> 0.0F).build());
+
+    // Latches when a continuous burst consumes the entire capacity and clears only at full cooldown.
+    public static final Supplier<AttachmentType<Boolean>> ROCKET_BOOTS_OVERHEATED = ATTACHMENT_TYPES.register(
+            "rocket_boots_overheated", () -> AttachmentType.builder(() -> Boolean.FALSE).build());
+
     // Authoritative umbrella state. Unlike the jetpack's animation payload, this attachment uses
     // NeoForge's entity-attachment sync: the server sends every open/close edge to the owning
     // player and all tracking clients, and also includes the current value when a player first
@@ -248,19 +304,24 @@ public class PracticeMod {
             () -> new JetpackItem(JETPACK_ARMOR_MATERIAL, ArmorItem.Type.CHESTPLATE,
                     new Item.Properties().durability(ArmorItem.Type.CHESTPLATE.getDurability(15))));
 
+    // Authored rocket boots model with iron-tier protection; RocketBootsFlightHandler owns flight.
+    public static final DeferredItem<RocketBootsItem> ROCKET_BOOTS = ITEMS.register("rocket_boots",
+            () -> new RocketBootsItem(ArmorMaterials.IRON, ArmorItem.Type.BOOTS,
+                    new Item.Properties().durability(ArmorItem.Type.BOOTS.getDurability(15))));
+
     // A held item rather than equipment. Having it in the selected hotbar slot or the offhand is
     // the server-validated permission to deploy; it never occupies or emulates an armor/Curios-style
     // slot, and it does nothing from a stowed inventory slot.
     public static final DeferredItem<UmbrellaGliderItem> UMBRELLA_GLIDER = ITEMS.register("umbrella_glider",
             () -> new UmbrellaGliderItem(new Item.Properties().stacksTo(1)));
 
-    // Creates a creative tab with the id "practicemod:example_tab" for the example item, that is placed after the combat tab
-    public static final DeferredHolder<CreativeModeTab, CreativeModeTab> EXAMPLE_TAB = CREATIVE_MODE_TABS.register("example_tab", () -> CreativeModeTab.builder()
-            .title(Component.translatable("itemGroup.practicemod")) //The language key for the title of your CreativeModeTab
+    // Include every registered item so new gadgets automatically appear in the mod's tab.
+    public static final DeferredHolder<CreativeModeTab, CreativeModeTab> TRAVERSAL_GADGETS_TAB = CREATIVE_MODE_TABS.register("example_tab", () -> CreativeModeTab.builder()
+            .title(Component.translatable("itemGroup.practicemod"))
             .withTabsBefore(CreativeModeTabs.COMBAT)
-            .icon(() -> EXAMPLE_ITEM.get().getDefaultInstance())
+            .icon(() -> JETPACK.get().getDefaultInstance())
             .displayItems((parameters, output) -> {
-                output.accept(EXAMPLE_ITEM.get()); // Add the example item to the tab. For your own tabs, this method is preferred over the event
+                ITEMS.getEntries().forEach(item -> output.accept(item.get()));
             }).build());
 
     // The constructor for the mod class is the first code that is run when your mod is loaded.
@@ -273,6 +334,7 @@ public class PracticeMod {
         BLOCKS.register(modEventBus);
         // Register the Deferred Register to the mod event bus so items get registered
         ITEMS.register(modEventBus);
+        ENTITIES.register(modEventBus);
         // Register the Deferred Register to the mod event bus so tabs get registered
         CREATIVE_MODE_TABS.register(modEventBus);
         // Register the Deferred Register to the mod event bus so armor materials get registered
@@ -324,7 +386,13 @@ public class PracticeMod {
         }
         if (event.getTabKey() == CreativeModeTabs.TOOLS_AND_UTILITIES) {
             event.accept(JETPACK);
+            event.accept(ROCKET_BOOTS);
             event.accept(UMBRELLA_GLIDER);
+            event.accept(SUBMARINE);
+            event.accept(SKATEBOARD);
+            event.accept(JETSKI);
+            event.accept(ATV);
+            event.accept(MECHANICAL_DOLPHIN);
         }
     }
 

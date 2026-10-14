@@ -1,0 +1,14 @@
+# Trail Scout ATV concept
+
+Generated with the built-in imagegen tool. Art direction is grounded in the existing Compact Racer and Deepseeker previews inspected in this task. This is a concept illustration, not an importable model; resolve projection differences during Blockbench construction.
+
+## Exact generation prompt
+
+```text
+Use case: stylized-concept
+Asset type: Minecraft mod ATV concept art and Blockbench modeling reference.
+Create a polished landscape design sheet for one compact single-rider utility quad ATV, titled 'TRAIL SCOUT / ATV'. Belongs to an existing Minecraft vehicle family: chunky cuboid construction, occasional rotated cuboids forming octagonal mechanical shapes, crisp square edges, deliberately low-resolution pixel-painted textures, strong readable silhouette, broad ochre/yellow painted panels over charcoal mechanical structure; sparse steel edge accents, inset warm cream rectangular headlights. Existing family includes a stepped white Compact Racer jet ski with black saddle and graphite underside and an ochre Deepseeker submarine with charcoal octagonal frames. Capture their practical friendly industrial design language.
+ATV design: exactly four oversized wide black faceted octagonal tires with a small number of large rectangular tread blocks and recessed dark steel hubs; short wheelbase and wide planted stance, generous ground clearance; squat ochre front nose with two inset rectangular cream lamps and simple charcoal squared brush guard; broad squared ochre fenders above the wheels; narrow charcoal single saddle, simple upright T handlebars with black grips, small recessed dashboard, clearly usable dark foot platforms, a compact exposed block-built engine below the seat and a small flat rectangular rear utility rack. A few coarse pixel wear marks and restrained panel seams, clean large surfaces. No additional luggage. Buildable mostly from simple cuboids and rotated cuboids, modest detail budget consistent with Minecraft assets. Tire geometry faceted, no smooth circles. Frame bars rectangular in cross section.
+Composition: neutral light blue-gray studio background, one dominant front three-quarter hero occupying left two thirds, smaller matching SIDE and FRONT orthographic views neatly stacked at right, small ochre/charcoal/steel/cream palette swatches at bottom. All views exactly the same vehicle, consistent wheel size, fender placement and proportions; fully visible silhouettes, generous margins. Soft neutral light, crisp readable pixel textures, no realistic gloss. Only title and view labels, no paragraphs.
+Avoid: smooth sculpted plastic, realistic vehicle rendering, rounded tubes, dense tiny greebles, high-poly suspension springs, overly complex tread, weapons, roof, windshield, rider, scenery, logos, photorealism. This is concept art for a Minecraft mod, not a real ATV product photo.
+```

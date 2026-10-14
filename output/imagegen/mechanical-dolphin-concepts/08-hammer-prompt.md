@@ -1,0 +1,10 @@
+Generated with built-in imagegen.
+
+Use case: stylized-concept. Create a bold Minecraft mod vehicle design exploration sheet. Subject: mechanical dolphin single-player submersible with an opening glass cockpit and player lying fully INSIDE on stomach in a near-horizontal bike-racing posture. Chest and abdomen on charcoal padded cradle, head forward, hands reaching forward to internal grips, legs extend backward with slight knee bend. Entire body fits inside sealed glass/hull envelope. No upright seat, exterior saddle or surfboard riding.
+
+Art direction: Blockbench-buildable chunky cuboids, rotated cuboids, stepped edges, flat faceted glass panels, sparse crisp pixel textures. Blue-gray painted shell, pale gray belly accents, charcoal structures, steel hinges, restrained cyan sensor eyes. Strong readable shapes and coherent large panel grouping. Avoid dense greebles, tiny ornamental panels, photorealism, organic curves. Dolphin cues: projecting beak, paired pectoral fins, dorsal stabilizer, horizontal tail flukes. Make the structural idea and extreme silhouette the main feature.
+
+One landscape concept board, light gray studio backdrop, large three-quarter CLOSED view on left, three-quarter OPEN view on right exposing the prone blocky Minecraft player, bottom strip with small matching orthographic SIDE CUTAWAY and TOP views. Consistent design in all views. All silhouettes fully in frame, no water or environment. Only title and simple CLOSED / OPEN / SIDE CUTAWAY / TOP labels. Cyan glass must be transparent enough to see the prone pilot. Do not default to a generic long oval dolphin body; commit to the design direction below.
+
+Title: '08 / HAMMER'
+DESIGN DIRECTION: A very broad flat muscular dolphin, wedge-shaped shoulder hull, short squared dolphin beak, huge thick downward-angled pectoral flippers, short powerful tail. Cockpit recessed deep between broad shoulder panels. Two glass gullwing canopy halves open outward from a central longitudinal spine. Width of main body approximately half its length, visibly squat and wide. Avoid shark hammerhead; retain distinct dolphin snout.

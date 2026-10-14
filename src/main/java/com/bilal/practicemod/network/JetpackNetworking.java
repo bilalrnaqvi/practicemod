@@ -13,9 +13,57 @@ import net.neoforged.neoforge.network.registration.PayloadRegistrar;
 
 public class JetpackNetworking {
     public static void register(RegisterPayloadHandlersEvent event) {
-        // Bumped when the umbrella input payload dropped its deployment flag, so a stale client
-        // fails the handshake cleanly instead of desyncing the byte stream.
-        PayloadRegistrar registrar = event.registrar("8");
+        // Vehicle input requires matching client/server versions.
+        PayloadRegistrar registrar = event.registrar("16");
+        registrar.playToServer(MechanicalDolphinInputPayload.TYPE, MechanicalDolphinInputPayload.STREAM_CODEC, (payload, context) -> {
+            if (context.player().getVehicle() instanceof com.bilal.practicemod.MechanicalDolphinEntity dolphin
+                    && dolphin.getId() == payload.entityId()) {
+                dolphin.acceptInput(context.player(), payload.throttle(), payload.yaw(), payload.pitch(), payload.rise());
+            }
+        });
+        registrar.playToServer(AtvInputPayload.TYPE, AtvInputPayload.STREAM_CODEC, (payload, context) -> {
+            if (context.player().getVehicle() instanceof com.bilal.practicemod.AtvEntity atv
+                    && atv.getId() == payload.entityId()) {
+                atv.acceptInput(context.player(), payload.throttle(), payload.steering());
+            }
+        });
+        registrar.playToServer(JetskiInputPayload.TYPE, JetskiInputPayload.STREAM_CODEC, (payload, context) -> {
+            if (context.player().getVehicle() instanceof com.bilal.practicemod.JetskiEntity ski
+                    && ski.getId() == payload.entityId()) {
+                ski.acceptInput(context.player(), payload.throttle(), payload.steering(), payload.boost());
+            }
+        });
+        registrar.playToServer(SubmarineCabinPayload.TYPE, SubmarineCabinPayload.STREAM_CODEC, (payload, context) -> {
+            if (context.player().getVehicle() instanceof com.bilal.practicemod.SubmarineEntity sub
+                    && sub.getId() == payload.entityId()) {
+                switch (payload.action()) {
+                    case 0 -> sub.toggleCabin(context.player());
+                    case 1 -> sub.acceptCabinInput(context.player(), payload.forward(), payload.strafe());
+                    case 2 -> com.bilal.practicemod.SubmarineInterior.use(sub, context.player());
+                    default -> { }
+                }
+            }
+        });
+        registrar.playToServer(SubmarineBoardPayload.TYPE, SubmarineBoardPayload.STREAM_CODEC, (payload, context) ->
+                com.bilal.practicemod.SubmarineBoarding.board(context.player(), payload.entityId()));
+        registrar.playToServer(SubmarineLightPayload.TYPE, SubmarineLightPayload.STREAM_CODEC, (payload, context) -> {
+            if (context.player().getVehicle() instanceof com.bilal.practicemod.SubmarineEntity submarine
+                    && submarine.getId() == payload.entityId()) {
+                submarine.toggleHeadlights(context.player());
+            }
+        });
+        registrar.playToServer(SubmarineInputPayload.TYPE, SubmarineInputPayload.STREAM_CODEC, (payload, context) -> {
+            if (context.player().getVehicle() instanceof com.bilal.practicemod.SubmarineEntity submarine
+                    && submarine.getId() == payload.entityId()) {
+                submarine.acceptInput(context.player(), payload.rise(), payload.descend(), payload.exit());
+            }
+        });
+        registrar.playToServer(SkateboardInputPayload.TYPE, SkateboardInputPayload.STREAM_CODEC, (payload, context) -> {
+            if (context.player().getVehicle() instanceof com.bilal.practicemod.SkateboardEntity board
+                    && board.getId() == payload.entityId()) {
+                board.acceptInput(context.player(), payload.buttons(), payload.steering(), payload.yaw());
+            }
+        });
         registrar.playToServer(JetpackInputPayload.TYPE, JetpackInputPayload.STREAM_CODEC, JetpackNetworking::handleJetpackInput);
         registrar.playToServer(OpenJetpackMenuPayload.TYPE, OpenJetpackMenuPayload.STREAM_CODEC, JetpackNetworking::handleOpenJetpackMenu);
         registrar.playToServer(UmbrellaGliderInputPayload.TYPE, UmbrellaGliderInputPayload.STREAM_CODEC,

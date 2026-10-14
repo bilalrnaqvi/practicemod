@@ -1,0 +1,13 @@
+{
+  "parent": "builtin/entity",
+  "textures": { "particle": "practicemod:entity/mechanical_dolphin" },
+  "display": {
+    "gui": { "rotation": [25, 135, 0], "scale": [0.48, 0.48, 0.48] },
+    "ground": { "scale": [0.4, 0.4, 0.4] },
+    "fixed": { "rotation": [0, 90, 0], "scale": [0.45, 0.45, 0.45] },
+    "thirdperson_righthand": { "rotation": [0, 90, 0], "scale": [0.4, 0.4, 0.4] },
+    "thirdperson_lefthand": { "rotation": [0, -90, 0], "scale": [0.4, 0.4, 0.4] },
+    "firstperson_righthand": { "rotation": [0, 135, 0], "scale": [0.4, 0.4, 0.4] },
+    "firstperson_lefthand": { "rotation": [0, -135, 0], "scale": [0.4, 0.4, 0.4] }
+  }
+}

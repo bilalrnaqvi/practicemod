@@ -28,9 +28,13 @@ public final class UmbrellaGliderModel {
     private final Vector3f transformedNormal = new Vector3f();
 
     void render(PoseStack poseStack, IntFunction<VertexConsumer> consumers, int packedLight,
-            int packedOverlay, float sectorRotationOffset, float sectorScale) {
+            int packedOverlay, float sectorRotationOffset, float sectorScale, float canopySpinDegrees) {
         renderElements(poseStack, consumers, packedLight, packedOverlay, -1);
 
+        // Spin the canopy and its ribs about the local shaft axis after the grip/bank
+        // transform. The fixed shaft and handle above remain planted in the hands.
+        poseStack.pushPose();
+        poseStack.mulPose(new Quaternionf().rotationY((float) Math.toRadians(canopySpinDegrees)));
         for (int sector = 0; sector < SECTOR_Y_ROTATIONS.length; sector++) {
             poseStack.pushPose();
             poseStack.mulPose(new Quaternionf().rotationY((float) Math.toRadians(SECTOR_Y_ROTATIONS[sector])));
@@ -40,6 +44,7 @@ public final class UmbrellaGliderModel {
             renderElements(poseStack, consumers, packedLight, packedOverlay, sector);
             poseStack.popPose();
         }
+        poseStack.popPose();
     }
 
     private void renderElements(PoseStack poseStack, IntFunction<VertexConsumer> consumers,

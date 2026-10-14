@@ -18,8 +18,8 @@ import net.neoforged.neoforge.client.event.ClientPlayerNetworkEvent;
 import net.neoforged.neoforge.event.entity.EntityLeaveLevelEvent;
 import net.neoforged.neoforge.event.tick.PlayerTickEvent;
 
-// Client-side driver for the jetpack animation. Once per tick, for EVERY player this client can
-// see (PlayerTickEvent fires for remote players too), it feeds the simulation's outputs into that
+// Client-side driver for the jetpack and rocket-boots flight pose. Once per tick, for EVERY player
+// this client can see (PlayerTickEvent fires for remote players too), it feeds the simulation's outputs into that
 // player's JetpackAnimationState and emits the matching particles and sounds. The local player's
 // inputs come from its own predicted attachments; remote players' come from the same attachments,
 // filled in by JetpackAnimSyncPayload (fuel needs no payload - it lives in item components that
@@ -60,7 +60,11 @@ public final class JetpackAnimationController {
         }
 
         ItemStack chest = player.getItemBySlot(EquipmentSlot.CHEST);
-        boolean wearing = chest.getItem() instanceof JetpackItem;
+        boolean wearingJetpack = chest.getItem() instanceof JetpackItem;
+        // The jetpack owns flight when both devices are equipped, matching the movement handler.
+        boolean wearingRocketBoots = !wearingJetpack
+                && RocketBootsFlightHandler.isWearingRocketBoots(player);
+        boolean wearing = wearingJetpack || wearingRocketBoots;
 
         JetpackAnimationState state = STATES.get(player.getId());
         if (state == null) {
@@ -74,27 +78,36 @@ public final class JetpackAnimationController {
         // The animation state machine (and the model's channels) work on a 0..1 heat scale; the
         // gameplay attachment runs 0..heatMax (default 200), so normalize here at the boundary.
         float heatMax = JetpackServerConfig.SPEC.isLoaded()
-                ? (float) (double) JetpackServerConfig.HEAT_MAX.get()
-                : 200.0F;
-        float heat = Mth.clamp(player.getData(PracticeMod.JETPACK_HEAT) / heatMax, 0.0F, 1.0F);
-        boolean overheated = Boolean.TRUE.equals(player.getData(PracticeMod.JETPACK_OVERHEATED));
-        boolean fuelEmpty = wearing && !JetpackFuelHandler.hasFuelSupply(chest);
-        boolean lowFuel = wearing && !fuelEmpty
+                ? wearingRocketBoots
+                        ? Math.max(1.0F, (float) (double) JetpackServerConfig.ROCKET_BOOTS_BOOST_SECONDS.get() * 20.0F)
+                        : (float) (double) JetpackServerConfig.HEAT_MAX.get()
+                : wearingRocketBoots ? 80.0F : 200.0F;
+        float rawHeat = wearingRocketBoots
+                ? player.getData(PracticeMod.ROCKET_BOOTS_HEAT)
+                : player.getData(PracticeMod.JETPACK_HEAT);
+        float heat = Mth.clamp(rawHeat / heatMax, 0.0F, 1.0F);
+        boolean overheated = Boolean.TRUE.equals(player.getData(wearingRocketBoots
+                ? PracticeMod.ROCKET_BOOTS_OVERHEATED
+                : PracticeMod.JETPACK_OVERHEATED));
+        boolean fuelEmpty = wearingJetpack && !JetpackFuelHandler.hasFuelSupply(chest);
+        boolean lowFuel = wearingJetpack && !fuelEmpty
                 && JetpackFuelHandler.getStoredBlazePowder(chest) == 0
                 && JetpackFuelHandler.getFuelFraction(chest) <= LOW_FUEL_FRACTION;
         // The glide/surge/coast/hover flags are written by the flight sim for the local player and by
         // the anim sync payload for remote players - the same dual path as thrusting. They arrive
         // already gated (fuel, overheat, boost profile), so they need no re-checking here.
-        boolean gliding = wearing && Boolean.TRUE.equals(player.getData(PracticeMod.JETPACK_GLIDING));
-        boolean surging = wearing && Boolean.TRUE.equals(player.getData(PracticeMod.JETPACK_SURGING));
-        boolean coasting = wearing && Boolean.TRUE.equals(player.getData(PracticeMod.JETPACK_COASTING));
-        boolean hovering = wearing && Boolean.TRUE.equals(player.getData(PracticeMod.JETPACK_HOVERING));
+        boolean gliding = wearingJetpack && Boolean.TRUE.equals(player.getData(PracticeMod.JETPACK_GLIDING));
+        boolean surging = wearingJetpack && Boolean.TRUE.equals(player.getData(PracticeMod.JETPACK_SURGING));
+        boolean coasting = wearingJetpack && Boolean.TRUE.equals(player.getData(PracticeMod.JETPACK_COASTING));
+        boolean hovering = wearingJetpack && Boolean.TRUE.equals(player.getData(PracticeMod.JETPACK_HOVERING));
         // Effective thrust, mirroring JetpackFlightHandler's gating - including hover's precedence
         // over it. Red-zone overheat locks thrust entirely. For remote players the synced flag is
         // already effective; reapplying the gate keeps this uniform for the local player, whose
         // attachment holds raw jump input (altitude trim rather than throttle while hovering).
-        boolean thrusting = wearing && !overheated && !fuelEmpty && !hovering
-                && Boolean.TRUE.equals(player.getData(PracticeMod.JETPACK_THRUSTING));
+        boolean thrusting = wearingRocketBoots
+                ? Boolean.TRUE.equals(player.getData(PracticeMod.ROCKET_BOOTS_THRUSTING))
+                : wearingJetpack && !overheated && !fuelEmpty && !hovering
+                        && Boolean.TRUE.equals(player.getData(PracticeMod.JETPACK_THRUSTING));
         // One-shot hitch cue, latched by JetpackHoverHitch (local player) or the anim sync handler
         // (remote players). Consumed here so it fires exactly one animation event.
         boolean hitch = Boolean.TRUE.equals(player.getData(PracticeMod.JETPACK_HITCH));
@@ -120,7 +133,7 @@ public final class JetpackAnimationController {
         state.tick(wearing, thrusting, gliding, surging, coasting, hovering, hitch, heat, overheated,
                 lowFuel, fuelEmpty, horizontalSpeed, (float) dx, (float) dz, (float) dy);
 
-        if (wearing) {
+        if (wearingJetpack) {
             emitFeedback(player, state, gliding, coasting);
         }
     }

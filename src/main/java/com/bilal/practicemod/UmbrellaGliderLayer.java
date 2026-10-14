@@ -14,7 +14,6 @@ import net.minecraft.client.renderer.texture.OverlayTexture;
 /** Third-person opening, deployed, and closing umbrella rendering. */
 public final class UmbrellaGliderLayer
         extends RenderLayer<AbstractClientPlayer, PlayerModel<AbstractClientPlayer>> {
-    private static final float PIXEL = 1.0F / 16.0F;
     private final UmbrellaGliderModel model = new UmbrellaGliderModel();
 
     public UmbrellaGliderLayer(
@@ -33,13 +32,12 @@ public final class UmbrellaGliderLayer
         }
 
         poseStack.pushPose();
-        // The Blockbench hub is at y=0 and the grip extends down to y=-19.1. This places that hub
-        // above the head and the grip beside the right hand, matching the previous gameplay layer.
-        poseStack.translate(-4.0F * PIXEL, -25.0F * PIXEL, 0.0F);
+        // The animated right palm carries the umbrella through reach, catch and steady glide.
+        UmbrellaGliderPoseRenderer.applyGliderAttitude(poseStack, state, getParentModel());
         this.model.render(poseStack, index -> bufferSource.getBuffer(
                         RenderType.entityCutoutNoCull(UmbrellaGliderModel.TEXTURES[index])), packedLight,
                 OverlayTexture.NO_OVERLAY, state.sectorRotationDegrees(partialTick),
-                state.sectorScale(partialTick));
+                state.sectorScale(partialTick), state.canopySpinDegrees(partialTick));
         poseStack.popPose();
     }
 }

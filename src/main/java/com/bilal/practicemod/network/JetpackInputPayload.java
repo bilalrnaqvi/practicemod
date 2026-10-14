@@ -8,11 +8,12 @@ import net.minecraft.network.codec.StreamCodec;
 import net.minecraft.network.protocol.common.custom.CustomPacketPayload;
 import net.minecraft.resources.ResourceLocation;
 
-// Sent client -> server every client tick while the jetpack is equipped, since vanilla only syncs
+// Sent client -> server every client tick while the jetpack or rocket boots are equipped, since vanilla only syncs
 // the jump-key-held state (and WASD impulses) for passengers steering a vehicle, not for a normal
 // on-foot player. forward/strafe are the raw movement impulses in [-1, 1]; the flight sim rotates
 // them by yaw so WASD steers relative to where the player faces. boost is the sprint-key-held state
-// (vanilla drops the sprint FLAG mid-air, so we read the key directly) - the OVERDRIVE surge input.
+// (vanilla drops the sprint FLAG mid-air, so we read the key directly) - the jetpack OVERDRIVE surge
+// input. Rocket boots reuse jumping/forward/strafe/sneaking and always send boost/hover false.
 //
 // sneaking is here for the same reason boost is, even though vanilla does sync the entity's shift
 // flag: that flag is gated (LocalPlayer.aiStep suppresses it while swimming, riding, or where the

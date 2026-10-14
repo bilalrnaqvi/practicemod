@@ -1,0 +1,444 @@
+{
+  "vertex": "practicemod:submarine_headlight",
+  "fragment": "practicemod:submarine_headlight",
+  "samplers": [
+    {
+      "name": "Sampler0"
+    },
+    {
+      "name": "Sampler2"
+    },
+    {
+      "name": "HeadlightShadow"
+    }
+  ],
+  "uniforms": [
+    {
+      "name": "ModelViewMat",
+      "type": "matrix4x4",
+      "count": 16,
+      "values": [
+        1.0,
+        0.0,
+        0.0,
+        0.0,
+        0.0,
+        1.0,
+        0.0,
+        0.0,
+        0.0,
+        0.0,
+        1.0,
+        0.0,
+        0.0,
+        0.0,
+        0.0,
+        1.0
+      ]
+    },
+    {
+      "name": "ProjMat",
+      "type": "matrix4x4",
+      "count": 16,
+      "values": [
+        1.0,
+        0.0,
+        0.0,
+        0.0,
+        0.0,
+        1.0,
+        0.0,
+        0.0,
+        0.0,
+        0.0,
+        1.0,
+        0.0,
+        0.0,
+        0.0,
+        0.0,
+        1.0
+      ]
+    },
+    {
+      "name": "ChunkOffset",
+      "type": "float",
+      "count": 3,
+      "values": [
+        0.0,
+        0.0,
+        0.0
+      ]
+    },
+    {
+      "name": "ColorModulator",
+      "type": "float",
+      "count": 4,
+      "values": [
+        1.0,
+        1.0,
+        1.0,
+        1.0
+      ]
+    },
+    {
+      "name": "FogStart",
+      "type": "float",
+      "count": 1,
+      "values": [
+        0.0
+      ]
+    },
+    {
+      "name": "FogEnd",
+      "type": "float",
+      "count": 1,
+      "values": [
+        1.0
+      ]
+    },
+    {
+      "name": "FogColor",
+      "type": "float",
+      "count": 4,
+      "values": [
+        0.0,
+        0.0,
+        0.0,
+        0.0
+      ]
+    },
+    {
+      "name": "FogShape",
+      "type": "int",
+      "count": 1,
+      "values": [
+        0
+      ]
+    },
+    {
+      "name": "AlphaCutoff",
+      "type": "float",
+      "count": 1,
+      "values": [
+        0
+      ]
+    },
+    {
+      "name": "LightIntensity",
+      "type": "float",
+      "count": 1,
+      "values": [
+        1.2
+      ]
+    },
+    {
+      "name": "LightCount",
+      "type": "int",
+      "count": 1,
+      "values": [
+        0
+      ]
+    },
+    {
+      "name": "LightOrigin0",
+      "type": "float",
+      "count": 3,
+      "values": [
+        0,
+        0,
+        0
+      ]
+    },
+    {
+      "name": "LightForward0",
+      "type": "float",
+      "count": 3,
+      "values": [
+        0,
+        0,
+        0
+      ]
+    },
+    {
+      "name": "LightRight0",
+      "type": "float",
+      "count": 3,
+      "values": [
+        0,
+        0,
+        0
+      ]
+    },
+    {
+      "name": "LightUp0",
+      "type": "float",
+      "count": 3,
+      "values": [
+        0,
+        0,
+        0
+      ]
+    },
+    {
+      "name": "LightOrigin1",
+      "type": "float",
+      "count": 3,
+      "values": [
+        0,
+        0,
+        0
+      ]
+    },
+    {
+      "name": "LightForward1",
+      "type": "float",
+      "count": 3,
+      "values": [
+        0,
+        0,
+        0
+      ]
+    },
+    {
+      "name": "LightRight1",
+      "type": "float",
+      "count": 3,
+      "values": [
+        0,
+        0,
+        0
+      ]
+    },
+    {
+      "name": "LightUp1",
+      "type": "float",
+      "count": 3,
+      "values": [
+        0,
+        0,
+        0
+      ]
+    },
+    {
+      "name": "LightOrigin2",
+      "type": "float",
+      "count": 3,
+      "values": [
+        0,
+        0,
+        0
+      ]
+    },
+    {
+      "name": "LightForward2",
+      "type": "float",
+      "count": 3,
+      "values": [
+        0,
+        0,
+        0
+      ]
+    },
+    {
+      "name": "LightRight2",
+      "type": "float",
+      "count": 3,
+      "values": [
+        0,
+        0,
+        0
+      ]
+    },
+    {
+      "name": "LightUp2",
+      "type": "float",
+      "count": 3,
+      "values": [
+        0,
+        0,
+        0
+      ]
+    },
+    {
+      "name": "LightOrigin3",
+      "type": "float",
+      "count": 3,
+      "values": [
+        0,
+        0,
+        0
+      ]
+    },
+    {
+      "name": "LightForward3",
+      "type": "float",
+      "count": 3,
+      "values": [
+        0,
+        0,
+        0
+      ]
+    },
+    {
+      "name": "LightRight3",
+      "type": "float",
+      "count": 3,
+      "values": [
+        0,
+        0,
+        0
+      ]
+    },
+    {
+      "name": "LightUp3",
+      "type": "float",
+      "count": 3,
+      "values": [
+        0,
+        0,
+        0
+      ]
+    },
+    {
+      "name": "CabinCount",
+      "type": "int",
+      "count": 1,
+      "values": [
+        0
+      ]
+    },
+    {
+      "name": "WaterPass",
+      "type": "int",
+      "count": 1,
+      "values": [
+        0
+      ]
+    },
+    {
+      "name": "CabinTransform0",
+      "type": "matrix4x4",
+      "count": 16,
+      "values": [
+        1,
+        0,
+        0,
+        0,
+        0,
+        1,
+        0,
+        0,
+        0,
+        0,
+        1,
+        0,
+        0,
+        0,
+        0,
+        1
+      ]
+    },
+    {
+      "name": "CabinTransform1",
+      "type": "matrix4x4",
+      "count": 16,
+      "values": [
+        1,
+        0,
+        0,
+        0,
+        0,
+        1,
+        0,
+        0,
+        0,
+        0,
+        1,
+        0,
+        0,
+        0,
+        0,
+        1
+      ]
+    },
+    {
+      "name": "CabinTransform2",
+      "type": "matrix4x4",
+      "count": 16,
+      "values": [
+        1,
+        0,
+        0,
+        0,
+        0,
+        1,
+        0,
+        0,
+        0,
+        0,
+        1,
+        0,
+        0,
+        0,
+        0,
+        1
+      ]
+    },
+    {
+      "name": "CabinTransform3",
+      "type": "matrix4x4",
+      "count": 16,
+      "values": [
+        1,
+        0,
+        0,
+        0,
+        0,
+        1,
+        0,
+        0,
+        0,
+        0,
+        1,
+        0,
+        0,
+        0,
+        0,
+        1
+      ]
+    },
+    {
+      "name": "WaterSprite0",
+      "type": "float",
+      "count": 4,
+      "values": [
+        0,
+        0,
+        0,
+        0
+      ]
+    },
+    {
+      "name": "WaterSprite1",
+      "type": "float",
+      "count": 4,
+      "values": [
+        0,
+        0,
+        0,
+        0
+      ]
+    },
+    {
+      "name": "WaterSprite2",
+      "type": "float",
+      "count": 4,
+      "values": [
+        0,
+        0,
+        0,
+        0
+      ]
+    }
+  ]
+}

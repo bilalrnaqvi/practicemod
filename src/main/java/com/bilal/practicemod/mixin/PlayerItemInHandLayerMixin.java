@@ -1,6 +1,7 @@
 package com.bilal.practicemod.mixin;
 
 import com.bilal.practicemod.PracticeMod;
+import com.bilal.practicemod.UmbrellaGliderAnimationController;
 import com.bilal.practicemod.UmbrellaGliderHandler;
 import com.mojang.blaze3d.vertex.PoseStack;
 
@@ -31,9 +32,15 @@ public abstract class PlayerItemInHandLayerMixin {
     private void practicemod$hideDeployedUmbrella(LivingEntity livingEntity, ItemStack itemStack,
             ItemDisplayContext displayContext, HumanoidArm arm, PoseStack poseStack,
             MultiBufferSource buffer, int packedLight, CallbackInfo ci) {
+        if (livingEntity.getVehicle() instanceof com.bilal.practicemod.SubmarineEntity submarine
+                && submarine.isBoarding()) {
+            ci.cancel();
+            return;
+        }
         if (livingEntity instanceof Player player
                 && itemStack.is(PracticeMod.UMBRELLA_GLIDER.get())
-                && UmbrellaGliderHandler.isDeployed(player)) {
+                && (UmbrellaGliderHandler.isDeployed(player)
+                        || UmbrellaGliderAnimationController.isAnimating(player))) {
             ci.cancel();
         }
     }

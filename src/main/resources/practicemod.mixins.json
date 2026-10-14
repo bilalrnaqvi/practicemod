@@ -4,12 +4,16 @@
   "package": "com.bilal.practicemod.mixin",
   "compatibilityLevel": "JAVA_21",
   "client": [
+    "BlenderArmorMixin",
     "LocalPlayerMixin",
+    "SubmarineLightMixin",
+    "SubmarineCameraMixin",
+    "SubmarineScreenEffectMixin",
     "PlayerItemInHandLayerMixin",
     "PlayerModelMixin",
     "PlayerRendererMixin"
   ],
-  "mixins": [],
+  "mixins": ["BoatMixin", "SubmarinePassengerMixin", "SubmarinePlayerMixin", "SubmarineSleepMixin"],
   "injectors": {
     "defaultRequire": 1
   }

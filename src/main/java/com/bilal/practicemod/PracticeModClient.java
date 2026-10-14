@@ -46,11 +46,17 @@ public class PracticeModClient {
         PracticeMod.LOGGER.info("MINECRAFT NAME >> {}", Minecraft.getInstance().getUser().getName());
     }
 
+    @SubscribeEvent
+    static void registerShaders(net.neoforged.neoforge.client.event.RegisterShadersEvent event) throws java.io.IOException {
+        SubmarineHeadlight.register(event);
+    }
+
     // Adds the jetpack boost-heat HUD bar above the vanilla status rows. Registered above AIR_LEVEL
     // (the last status row) so the vanilla Gui height trackers are final when the overlay renders.
     @SubscribeEvent
     static void registerGuiLayers(RegisterGuiLayersEvent event) {
         event.registerAbove(VanillaGuiLayers.AIR_LEVEL, JetpackHudOverlay.ID, new JetpackHudOverlay());
+        event.registerAbove(VanillaGuiLayers.AIR_LEVEL, SkateboardHudOverlay.ID, new SkateboardHudOverlay());
     }
 
     // Tells the client which Screen renders the jetpack fueling menu.
@@ -63,14 +69,28 @@ public class PracticeModClient {
     // Controls screen.
     @SubscribeEvent
     static void registerKeyMappings(RegisterKeyMappingsEvent event) {
+        event.register(SubmarineClientHandler.CABIN_KEY);
+        event.register(SubmarineClientHandler.EXIT_KEY);
+        event.register(SubmarineClientHandler.LIGHT_KEY);
         event.register(JetpackClientHandler.OPEN_MENU_KEY);
         event.register(JetpackClientHandler.HOVER_TOGGLE_KEY);
+        for (var key : SkateboardClientHandler.TRICK_KEYS) event.register(key);
     }
 
     // Registers the imported SCAVPACK's worn-model geometry under its layer location.
     @SubscribeEvent
     static void registerLayerDefinitions(EntityRenderersEvent.RegisterLayerDefinitions event) {
         event.registerLayerDefinition(JetpackModel.LAYER, JetpackModel::createLayer);
+        event.registerLayerDefinition(RocketBootsModel.LAYER, RocketBootsModel::createLayer);
+    }
+
+    @SubscribeEvent
+    static void registerEntityRenderers(EntityRenderersEvent.RegisterRenderers event) {
+        event.registerEntityRenderer(PracticeMod.SUBMARINE_ENTITY.get(), SubmarineRenderer::new);
+        event.registerEntityRenderer(PracticeMod.SKATEBOARD_ENTITY.get(), SkateboardRenderer::new);
+        event.registerEntityRenderer(PracticeMod.JETSKI_ENTITY.get(), JetskiRenderer::new);
+        event.registerEntityRenderer(PracticeMod.ATV_ENTITY.get(), AtvRenderer::new);
+        event.registerEntityRenderer(PracticeMod.MECHANICAL_DOLPHIN_ENTITY.get(), MechanicalDolphinRenderer::new);
     }
 
     // The main flight visuals are a player render layer rather than world particles. That gives the
@@ -82,6 +102,8 @@ public class PracticeModClient {
             PlayerRenderer renderer = event.getSkin(skin);
             if (renderer != null) {
                 renderer.addLayer(new JetpackEffectLayer(renderer, event.getEntityModels()));
+                renderer.addLayer(new RocketBootsEffectLayer(renderer));
+                renderer.addLayer(new SkateboardLegLayer(renderer));
                 renderer.addLayer(new UmbrellaGliderLayer(renderer, event.getEntityModels()));
             }
         }
@@ -94,6 +116,62 @@ public class PracticeModClient {
     // animated child parts (tank pods, thrusters, fan, core, and latches) from the wearer's state.
     @SubscribeEvent
     static void registerClientExtensions(RegisterClientExtensionsEvent event) {
+        event.registerItem(new IClientItemExtensions() {
+            private MechanicalDolphinItemRenderer renderer;
+            @Override public BlockEntityWithoutLevelRenderer getCustomRenderer() {
+                if (renderer == null) {
+                    Minecraft minecraft = Minecraft.getInstance();
+                    renderer = new MechanicalDolphinItemRenderer(minecraft.getBlockEntityRenderDispatcher(), minecraft.getEntityModels());
+                }
+                return renderer;
+            }
+        }, PracticeMod.MECHANICAL_DOLPHIN.get());
+        event.registerItem(new IClientItemExtensions() {
+            private JetskiItemRenderer renderer;
+            @Override public BlockEntityWithoutLevelRenderer getCustomRenderer() {
+                if (renderer == null) {
+                    Minecraft minecraft = Minecraft.getInstance();
+                    renderer = new JetskiItemRenderer(minecraft.getBlockEntityRenderDispatcher(), minecraft.getEntityModels());
+                }
+                return renderer;
+            }
+        }, PracticeMod.JETSKI.get());
+        event.registerItem(new IClientItemExtensions() {
+            private AtvItemRenderer renderer;
+            @Override public BlockEntityWithoutLevelRenderer getCustomRenderer() {
+                if (renderer == null) {
+                    Minecraft minecraft = Minecraft.getInstance();
+                    renderer = new AtvItemRenderer(minecraft.getBlockEntityRenderDispatcher(), minecraft.getEntityModels());
+                }
+                return renderer;
+            }
+        }, PracticeMod.ATV.get());
+        event.registerItem(new IClientItemExtensions() {
+            private SubmarineItemRenderer renderer;
+            @Override
+            public BlockEntityWithoutLevelRenderer getCustomRenderer() {
+                if (renderer == null) {
+                    Minecraft minecraft = Minecraft.getInstance();
+                    renderer = new SubmarineItemRenderer(
+                            minecraft.getBlockEntityRenderDispatcher(), minecraft.getEntityModels());
+                }
+                return renderer;
+            }
+        }, PracticeMod.SUBMARINE.get());
+        event.registerItem(new IClientItemExtensions() {
+            private SkateboardItemRenderer renderer;
+
+            @Override
+            public BlockEntityWithoutLevelRenderer getCustomRenderer() {
+                if (renderer == null) {
+                    Minecraft minecraft = Minecraft.getInstance();
+                    renderer = new SkateboardItemRenderer(
+                            minecraft.getBlockEntityRenderDispatcher(), minecraft.getEntityModels());
+                }
+                return renderer;
+            }
+        }, PracticeMod.SKATEBOARD.get());
+
         event.registerItem(new IClientItemExtensions() {
             // Baked once on first use; the geometry is code-defined, so resource reloads can't
             // change it and the cached copy stays valid for the lifetime of the client.
@@ -125,6 +203,31 @@ public class PracticeModClient {
                 }
             }
         }, PracticeMod.JETPACK.get());
+
+        event.registerItem(new IClientItemExtensions() {
+            private RocketBootsModel model;
+            private RocketBootsItemRenderer renderer;
+
+            @Override
+            public HumanoidModel<?> getHumanoidArmorModel(LivingEntity entity, ItemStack stack,
+                    EquipmentSlot slot, HumanoidModel<?> original) {
+                if (this.model == null) {
+                    this.model = new RocketBootsModel(Minecraft.getInstance().getEntityModels()
+                            .bakeLayer(RocketBootsModel.LAYER));
+                }
+                return this.model;
+            }
+
+            @Override
+            public BlockEntityWithoutLevelRenderer getCustomRenderer() {
+                if (this.renderer == null) {
+                    Minecraft minecraft = Minecraft.getInstance();
+                    this.renderer = new RocketBootsItemRenderer(
+                            minecraft.getBlockEntityRenderDispatcher(), minecraft.getEntityModels());
+                }
+                return this.renderer;
+            }
+        }, PracticeMod.ROCKET_BOOTS.get());
 
         event.registerItem(new IClientItemExtensions() {
             private UmbrellaGliderItemRenderer renderer;

@@ -38,3 +38,16 @@ run/
 **/src/generated/**/.cache/
 repo/
 !**/src/**/repo/
+
+### Local authoring and review artifacts ###
+/logs/
+__pycache__/
+*.py[cod]
+*.blend[0-9]*
+
+# Keep textual handoffs, but not rendered frames/intermediates. Never blanket-delete output.
+/output/**
+!/output/**/
+!/output/**/*.md
+# Independent Blender reference consumed by the Minecraft renderer validation.
+!/output/animation/boarding-runtime/runtime-reference.json

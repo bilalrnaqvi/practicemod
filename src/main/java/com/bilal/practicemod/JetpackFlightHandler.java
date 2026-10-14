@@ -182,7 +182,7 @@ public class JetpackFlightHandler {
             if (surging) {
                 applySurgeThrust(player);
             } else {
-                applyThrust(player, afterburner);
+                applyThrust(player, afterburner, 1.0);
             }
             player.fallDistance = 0.0F;
 
@@ -517,15 +517,35 @@ public class JetpackFlightHandler {
     // to without discarding momentum carried in from a surge or a coast (see the block below). In
     // CLASSIC the heat-band afterburner multiplies the acceleration AND the caps, so the band
     // genuinely raises top speed. Runs identically on both sides.
-    private static void applyThrust(Player player, boolean afterburner) {
+    /** Shared entry point for devices that use the jetpack's ordinary, non-sprint thrust profile. */
+    static void applyNormalThrust(Player player) {
+        applyNormalThrust(player, 1.0);
+    }
+
+    /**
+     * Shared ordinary-thrust controller with a device-specific strength scale. Scaling both the
+     * net acceleration and caps keeps weaker devices weaker throughout a sustained burn, rather
+     * than merely making them take longer to reach the jetpack's full speed.
+     */
+    static void applyNormalThrust(Player player, double thrustScale) {
+        applyThrust(player, false, thrustScale);
+    }
+
+    private static void applyThrust(Player player, boolean afterburner, double thrustScale) {
         Vec3 motion = player.getDeltaMovement();
-        double mult = afterburner ? JetpackServerConfig.AFTERBURNER_THRUST_MULTIPLIER.get() : 1.0;
-        double accel = JetpackServerConfig.THRUST_ACCEL.get() * mult;
+        double profileMult = afterburner ? JetpackServerConfig.AFTERBURNER_THRUST_MULTIPLIER.get() : 1.0;
+        double mult = thrustScale * profileMult;
+        double configuredAccel = JetpackServerConfig.THRUST_ACCEL.get() * profileMult;
+        // PlayerTick.Post sees gravity already applied. Scale the acceleration above gravity, not
+        // the raw configured value: half of the default 0.105 would be below gravity (~0.08) and
+        // could never lift off. At scale 0.5 this yields half the ordinary jetpack's net climb.
+        double gravity = player.getAttributeValue(Attributes.GRAVITY);
+        double accel = gravity + (configuredAccel - gravity) * thrustScale;
 
         // Vertical: jump+sneak eases toward a gentle controlled sink (hover); jump alone climbs to
         // the ascent cap. Easing by at most `accel` per tick keeps the hover from snapping.
         double newY;
-        if (player.isShiftKeyDown()) {
+        if (Boolean.TRUE.equals(player.getData(PracticeMod.JETPACK_SNEAKING))) {
             double target = -JetpackServerConfig.HOVER_DESCENT_SPEED.get();
             newY = motion.y + Mth.clamp(target - motion.y, -accel, accel);
         } else {

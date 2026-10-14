@@ -52,7 +52,8 @@ public final class UmbrellaGliderClientHandler {
         LocalPlayer player = Minecraft.getInstance().player;
         if (player != null
                 && event.getItemStack().is(PracticeMod.UMBRELLA_GLIDER.get())
-                && UmbrellaGliderHandler.isDeployed(player)) {
+                && (UmbrellaGliderHandler.isDeployed(player)
+                        || UmbrellaGliderAnimationController.isAnimating(player))) {
             event.setCanceled(true);
         }
     }

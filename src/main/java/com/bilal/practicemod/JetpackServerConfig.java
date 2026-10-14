@@ -403,5 +403,19 @@ public class JetpackServerConfig {
             .comment("Damage dealt to the wearer once, at the moment the overheat lockout latches. 0 disables it.")
             .defineInRange("overheatDamage", 0.0, 0.0, 100.0);
 
+    // --- ROCKET BOOTS ---
+    // These reuse normal jetpack thrust but replace its fuel/heat system with one short burst meter.
+    public static final ModConfigSpec.DoubleValue ROCKET_BOOTS_BOOST_SECONDS = BUILDER
+            .comment("Maximum continuous rocket-boots boost duration in seconds. The default four-second",
+                    "burst has half the normal (non-sprint) jetpack's net lift, steering, and speed caps.",
+                    "Releasing early lets",
+                    "the partially used meter cool; reaching the limit locks thrust until fully cooled.")
+            .defineInRange("rocketBootsBoostSeconds", 4.0, 0.25, 30.0);
+
+    public static final ModConfigSpec.DoubleValue ROCKET_BOOTS_COOLDOWN_SECONDS = BUILDER
+            .comment("Time in seconds for completely heated rocket boots to cool back to empty.",
+                    "After a full-duration burst, the boots remain locked for this entire period.")
+            .defineInRange("rocketBootsCooldownSeconds", 4.0, 0.25, 60.0);
+
     public static final ModConfigSpec SPEC = BUILDER.build();
 }

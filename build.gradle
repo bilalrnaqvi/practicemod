@@ -27,7 +27,8 @@ sourceSets.main.resources {
 }
 
 repositories {
-    // Add here additional repositories if required by some of the dependencies below.
+    maven { url = 'https://repo.redlance.org/public' }
+    maven { url = 'https://maven.kosmx.dev/' }
 }
 
 base {
@@ -54,6 +55,12 @@ neoForge {
     runs {
         client {
             client()
+            if (project.hasProperty('submarineModelReview')) {
+                systemProperty 'practicemod.submarineModelReview', file('output/animation/boarding-runtime/rear-runtime').absolutePath
+            }
+            if (project.hasProperty('animationRenderCheck')) {
+                systemProperty 'practicemod.animationRenderCheck', file('output/animation/boarding-runtime/runtime').absolutePath
+            }
 
             // Comma-separated list of namespaces to load gametests from. Empty = all namespaces.
             systemProperty 'neoforge.enabledGameTestNamespaces', project.mod_id
@@ -118,6 +125,16 @@ configurations {
 }
 
 dependencies {
+    // Use PAL's player-independent evaluator with our existing vehicle render hooks.
+    // This avoids a second set of global player/camera mixins competing for the pose.
+    implementation(jarJar('com.zigythebird.playeranim:PlayerAnimationLibCore:1.1.6+mc.1.21.1')) { transitive = false }
+    implementation(jarJar('com.zigythebird:mochafloats:4.1.0')) { transitive = false }
+    implementation jarJar('org.javassist:javassist:3.30.2-GA')
+    implementation jarJar('io.github.kosmx.bendy-lib:bendy-lib-forge:5.1')
+    // NeoForge 1.21.1 does not discover plain libraries from the mod classpath in dev runs.
+    additionalRuntimeClasspath('com.zigythebird.playeranim:PlayerAnimationLibCore:1.1.6+mc.1.21.1') { transitive = false }
+    additionalRuntimeClasspath('com.zigythebird:mochafloats:4.1.0') { transitive = false }
+    additionalRuntimeClasspath 'org.javassist:javassist:3.30.2-GA'
     // Example optional mod dependency with JEI
     // The JEI API is declared for compile time use, while the full JEI artifact is used at runtime
     // compileOnly "mezz.jei:jei-${mc_version}-common-api:${jei_version}"
@@ -183,10 +200,33 @@ tasks.withType(JavaCompile).configureEach {
     options.encoding = 'UTF-8' // Use the UTF-8 charset for Java compilation
 }
 
+sourceSets {
+    animationValidation {
+        java.srcDir 'tools'
+        java.include 'ValidateBlenderPlayback.java'
+        compileClasspath += sourceSets.main.output + sourceSets.main.compileClasspath
+        runtimeClasspath += sourceSets.main.output + sourceSets.main.runtimeClasspath
+    }
+}
+
+tasks.register('validateBlenderPlayback', JavaExec) {
+    dependsOn tasks.named('animationValidationClasses')
+    classpath = sourceSets.animationValidation.runtimeClasspath
+    mainClass = 'ValidateBlenderPlayback'
+    workingDir = projectDir
+}
+
 // IDEA no longer automatically downloads sources/javadoc jars for dependencies, so we need to explicitly enable the behavior.
 idea {
     module {
         downloadSources = true
         downloadJavadoc = true
     }
+}
+
+// Portable verification shared by local development and CI. Visual checks remain explicit.
+tasks.register('verifyProject') {
+    group = 'verification'
+    description = 'Build the mod, validate PAL playback, and run dedicated-server GameTests.'
+    dependsOn tasks.named('build'), tasks.named('validateBlenderPlayback'), tasks.named('runGameTestServer')
 }

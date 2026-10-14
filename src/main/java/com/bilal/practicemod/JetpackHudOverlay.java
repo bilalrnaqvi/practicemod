@@ -10,7 +10,8 @@ import net.minecraft.util.Mth;
 import net.minecraft.world.entity.EquipmentSlot;
 import net.minecraft.world.item.ItemStack;
 
-// The jetpack's on-screen readout: a segmented, industrial half-ring centered above the hotbar.
+// The jetpack and rocket boots' on-screen readout: a segmented, industrial half-ring centered
+// above the hotbar.
 // Total fuel is intentionally absent from the HUD; it is a long-lived consumable whose depletion is
 // announced by JetpackClientHandler instead of a second resource bar. The ring visualizes the
 // client-predicted boost heat (live with zero network traffic). Red is reserved for the latched
@@ -52,13 +53,22 @@ public final class JetpackHudOverlay implements LayeredDraw.Layer {
         if (player == null || minecraft.options.hideGui || !JetpackServerConfig.SPEC.isLoaded()) {
             return;
         }
+        // The mounted vehicle owns this HUD position; restore the equipment meter on dismount.
+        if (player.getVehicle() instanceof JetskiEntity) return;
         ItemStack chest = player.getItemBySlot(EquipmentSlot.CHEST);
-        if (!(chest.getItem() instanceof JetpackItem)) {
+        boolean wearingJetpack = chest.getItem() instanceof JetpackItem;
+        boolean wearingRocketBoots = !wearingJetpack
+                && RocketBootsFlightHandler.isWearingRocketBoots(player);
+        if (!wearingJetpack && !wearingRocketBoots) {
             return;
         }
 
-        float heat = player.getData(PracticeMod.JETPACK_HEAT);
-        float heatMax = (float) (double) JetpackServerConfig.HEAT_MAX.get();
+        float heat = player.getData(wearingRocketBoots
+                ? PracticeMod.ROCKET_BOOTS_HEAT
+                : PracticeMod.JETPACK_HEAT);
+        float heatMax = wearingRocketBoots
+                ? Math.max(1.0F, (float) (double) JetpackServerConfig.ROCKET_BOOTS_BOOST_SECONDS.get() * 20.0F)
+                : (float) (double) JetpackServerConfig.HEAT_MAX.get();
 
         int x = graphics.guiWidth() / 2 - WIDTH / 2;
         // Vanilla's complete heart and food groups leave too little horizontal room for this meter
@@ -79,7 +89,9 @@ public final class JetpackHudOverlay implements LayeredDraw.Layer {
 
         // A latched overheat alternates the whole ring between its current gold/orange reading and
         // the red flash layer. player.tickCount keeps the cadence stable even while the game is paused.
-        boolean overheated = Boolean.TRUE.equals(player.getData(PracticeMod.JETPACK_OVERHEATED));
+        boolean overheated = Boolean.TRUE.equals(player.getData(wearingRocketBoots
+                ? PracticeMod.ROCKET_BOOTS_OVERHEATED
+                : PracticeMod.JETPACK_OVERHEATED));
         boolean overheatFlash = overheated && (player.tickCount / 4 & 1) == 0;
         if (overheatFlash) {
             blitLayer(graphics, x, y, OVERHEAT_LAYER_V);
@@ -87,7 +99,7 @@ public final class JetpackHudOverlay implements LayeredDraw.Layer {
 
         if (overheatFlash) {
             drawBaseLamps(graphics, x, y, OVERHEAT_LAMP);
-        } else if (Boolean.TRUE.equals(player.getData(PracticeMod.JETPACK_HOVER_MODE))) {
+        } else if (wearingJetpack && Boolean.TRUE.equals(player.getData(PracticeMod.JETPACK_HOVER_MODE))) {
             boolean engaged = Boolean.TRUE.equals(player.getData(PracticeMod.JETPACK_HOVERING));
             drawHoverIndicator(graphics, x, y, player.tickCount, engaged);
             drawBaseLamps(graphics, x, y, engaged ? HOVER_BRIGHT : HOVER_ARMED);
