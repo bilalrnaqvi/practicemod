@@ -24,6 +24,7 @@ Some older standalone preview tools contain machine-specific Java paths; they ar
 - [Working instructions](AGENTS.md)
 - [Art direction](ART_DIRECTION.md) and [animation direction](ANIMATION_DIRECTION.md)
 - [Canonical sources and exporters](docs/SOURCE_MAP.md)
+- [White Horizon yacht design and implementation plan](docs/yacht/WHITE_HORIZON.md) (planning; moving-floor prototype first)
 - Vehicle controls and details: [Deepseeker](DEEPSEEKER.md), [CRAG](ATV.md),
   [jetski](JETSKI.md), [Mechanical Dolphin](MECHANICAL_DOLPHIN.md), [skateboard](SKATEBOARD.md).
 
