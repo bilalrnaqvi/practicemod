@@ -5,7 +5,7 @@ Status: technical plan with a completed static modeling stage, 2026-10-14. See t
 and static validation. The visual direction is approved; the finished model is not yet
 user-approved. Yacht gameplay remains unimplemented. An opt-in Sable dependency spike and moving-floor
 fixture now exist; see the [runtime investigation](WHITE_HORIZON_RUNTIME.md) for the
-failed precision gate and reproducible commands. The backend is not approved for release.
+official-release precision failure, experimental f64 candidate results and reproducible commands. The backend is not approved for release.
 
 Target: Minecraft **1.21.1**, NeoForge **21.1.235**, Java **21**, Mojang names with
 Parchment **2024.11.17**. Start with a luxurious player-owned social space for about

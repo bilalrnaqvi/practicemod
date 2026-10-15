@@ -26,14 +26,15 @@ In a creative disposable world with cheats, `/yachtprototype spawn` allocates a
 12 × 9 two-floor sub-level three blocks ahead in world +Z. The checked empty test
 corridor is 12 × 8 × 32 blocks. This is an air-space physics fixture, not the final
 water placement flow. It contains a U stair, upper rails, a chair and chest. The
-script holds for two seconds, accelerates to 0.8 blocks/second, cruises, brakes and
-holds. It uses Sable's velocity API and leaves occupants unmounted. It does not
+fixture holds until `/yachtprototype start`; the script then holds for two seconds, accelerates to 0.8 blocks/second, cruises, brakes and
+holds. The command permits one trip per fixture so it cannot leave its checked
+corridor on a repeated start. It uses Sable's velocity API and leaves occupants unmounted. It does not
 teleport the platform each tick. Test fixtures are removed on normal server shutdown;
 crash recovery and retained inventories are deliberately not implemented here.
 
 The fixture is smaller than the planned complete prototype: pool, gate, doorway,
-turning, player-input/packet telemetry and dock transitions remain to be added after
-straight motion works. An armor stand is an initial contact probe, not a substitute
+player-input/packet telemetry and dock transitions remain to be added after
+the remaining client and boundary checks pass. An armor stand is an initial contact probe, not a substitute
 for real player movement or multiplayer validation.
 
 ## Backend audit
@@ -63,65 +64,104 @@ Source API references at the inspected commit:
 - This prototype's velocity feedback is not an approved navigation controller and
   must not be used to drive a full yacht into terrain.
 
-## Results
+## Experimental double-precision candidate
 
-See the accompanying test results recorded below. No full-yacht first-person or
-multiplayer pass is claimed. Canonical model, textures and derived modeling exports
-were not changed by this investigation. Existing vehicle movement/camera code was
-not edited.
+The official release fails the million-block travel check. A local native patch now
+uses the same pinned Rapier revision's `rapier3d-f64` package, double-precision
+Marten collision data and double-precision poses. It removes `simd-nightly` (the f64
+backend does not offer that feature) and retains parallel physics. Performance is
+unmeasured. The lock also selects `parry3d-f64` 0.26.1 (the original f32 lock
+used `parry3d` 0.26.0). This is a development candidate, **not an approved release dependency**.
 
-### Measured movement gate, 2026-10-15
+Canonical changes: [native patch](../../tools/yacht/native/sable-f64.patch),
+[upstream license](../../tools/yacht/native/LICENSE-SABLE.md),
+[builder](../../tools/yacht/build_sable_f64.py),
+[packager](../../tools/yacht/package_sable_f64.py) and
+[LZ4 helper](../../tools/yacht/Lz4Pack.java). The builder pins Sable commit
+`d501fb3103c3247e20cb2151a99182ad5dd61adb`, Rapier commit
+`38e92f117590862481a53df6fc69a5d893e29186`, Rust 1.90.0 and Cargo.lock.
+It refuses to overwrite an existing checkout. It requires Git, an existing Rust
+1.90.0 toolchain, Java 21 and network access for the first source/dependency fetch.
+
+```sh
+python3 tools/yacht/fetch_sable.py
+python3 tools/yacht/build_sable_f64.py
+python3 tools/yacht/package_sable_f64.py build/yacht/sable-f64-source/sable_rapier/src/main/rust/target/release/libsable_rapier.dylib
+./gradlew verifyProject --offline -PyachtPrototype -PyachtF64
+./gradlew runClient --offline -PyachtPrototype -PyachtF64
+```
+
+The packager preserves the official JAR and writes a separate candidate and local
+SHA-512 manifest. Gradle verifies that manifest and the official base hash. The
+candidate contains **macOS arm64 natives only**; Linux/Windows must be built and
+validated separately before any shared-server use. No native binary is committed.
+Prototype JARs have a distinct `practicemod-yacht-prototype` name. Normal builds do
+not include these sources or Sable. The candidate is not a reproducible rebuild of
+the entire official Java release; it replaces its nested native payload only.
+
+## Automated results, 2026-10-15
 
 | Check | Result |
 | --- | --- |
-| Pinned Sable added to existing mod, no fixture | Build and all 58 existing GameTests passed; Rapier initialized on this Mac |
-| Client startup with Sable | Reached renderer/shader setup; no in-world first-person review claimed |
-| Corrected near-origin fixture, 640 ticks | Unmounted armor stand remained supported through acceleration/cruise/braking; measured travel 13.899455 blocks, final deck-height error 0.064892 blocks, final grounded horizontal drift 0.0 |
-| Same motion at X=Z=1,000,000 | **FAIL**: transformed local origin ended at Z offset -0.665908 blocks despite commanded forward motion; the positive travel gate failed |
-| Full prototype verification | 60 tests executed: 58 existing tests and near-origin contact probe pass; far-coordinate probe fails, intentionally keeping the movement gate red |
-| Full yacht, stairs/jumping, water, turning, real players and two clients | Not executed; no acceptance claimed |
+| Official Sable 2.0.6 at million-block coordinates | Failed physical forward travel; retained as a regression reproduction |
+| Local f64 candidate, near origin | Passed; travel 13.900000 blocks, height error 0.064931 blocks, final local horizontal drift 0.0 |
+| Local f64 at X=Z=1,000,000 | Passed; travel 13.900000 blocks, same height error, drift 0.0 |
+| Ten-degree turn at X=Z=-1,000,000 | Passed; Z travel 15.039678 blocks, same height error, drift 0.0 |
+| Two simultaneous platforms in opposite distant regions | Passed after readiness gating; each traveled 13.900000 blocks with final drift 0.0 |
+| Support during acceleration, cruise, braking and stop | Checked every ten ticks; supported/unmounted assertions passed |
+| Jump/landing contact probe during cruise | Passed: upward impulse lifted probe >0.4 block, returned to the floor, final local drift 0.0 |
+| Unmounted mock-player staircase ascent during motion | Passed five walking waypoints and upper-landing height check |
+| Full candidate verification | 67 required GameTests passed (61 existing + six yacht tests), build and PAL checks passed |
 
-The contact probe uses the embedded plot center and `Pose3d.transformPosition` /
-`transformPositionInverse`, not the moving center of mass, for measurements. Grounded
-drift is measured from tick 39, after initial contact settles and before motion starts.
-Earlier measurements from the center of mass were invalid and are not reported as
-collision failures. The test checks final contact, not continuous ten-minute stability.
+These are server-side fixture tests. The armor stand probes are not players. The
+stair test applies movement to a mock player and checks collision; it does not
+exercise client inputs, prediction or network packets. The turn probe is a bounded
+physics test, not a destination navigation controller. Support checks cover about
+32 seconds, not ten-minute stability. The final candidate revision repeated the
+67-test pass with the same travel/drift results.
 
-The far-coordinate failure persists with explicit force-loading and in a separate
-batch away from neighboring GameTests. This is consistent with upstream's open
-[precision issue #604](https://github.com/ryanhcode/sable/issues/604).
-A proposed [floating-origin fix #1546](https://github.com/ryanhcode/sable/issues/1546)
-changes Rust/Rapier and explicitly leaves rendering and distant multiplayer regions
-unresolved. It was assessed as a research candidate, not adopted as a supported fix.
-The release's Rust dependency is `rapier3d`; the inspected upstream physics tests also
-contain a note about awaiting 64-bit mode. No verified pinned replacement passed
-this project's movement matrix.
+The contact measurements use the embedded plot center and `Pose3d.transformPosition`
+and its inverse, not the moving center of mass. Initial fixed-time startup produced
+intermittent drift because probes had not landed. Tests now preload their bounded
+terrain, hold motion until 20 consecutive grounded ticks, and fail if contact is not
+ready within 300 ticks. The measured run settled at ticks 23–98. Motion starts after
+this baseline, so initial falling is neither counted as grounded drift nor hidden
+by taking a baseline after travel starts. Two-region motion overlaps, but begins
+independently when each probe settles. Test callbacks are registered in advance to
+avoid mutating Minecraft's pending-task map during iteration.
 
-During Sable regression runs, oversized AABB warnings also originated in existing
-mock-player movement tests at the test runner's randomly distant coordinates. The
-58 assertions pass, but those warnings must be investigated before claiming vehicle
-compatibility in actual gameplay. Missing optional `create:flywheel` physics tags
-were logged without preventing startup; Create was not added to silence them.
+## Client review status
 
-**Decision:** retain the source/texture design and stop feature expansion at the
-failed backend gate. No acquisition item, captain, map, routes, ownership, water
-handling or finished-yacht runtime rendering has been implemented. A giant rideable
-entity or passenger teleporting would not resolve this failure. The next engineering
-step is a precision-correct backend build (including rendering and multi-region
-behavior), followed by the full movement matrix and only then full-yacht integration.
+The f64 client launched and reached completed shader upload. The available desktop
+control inventory did not expose the Java window and selecting `java` returned
+`Invalid app`; no in-world or first-person review was performed. Local startup log:
+`/private/tmp/yacht-f64-client.log`. To review manually, use the isolated client
+command above, create a disposable creative world with cheats, find loaded empty
+12 × 8 × 32 air space, run `/yachtprototype spawn`, board, and run
+`/yachtprototype start`. This is the small test structure, not White Horizon.
 
-The prototype Java sources, optional Gradle configuration, fetcher and dependency
-lock are the changed implementation files. Bulky logs remain local under
-`/private/tmp/yacht-floor-tests-7.log`, `/private/tmp/yacht-prototype-final.log` and
-`/private/tmp/yacht-normal-verify.log`. The normal `verifyProject --offline` run passed
-all 58 required tests; static yacht checks still pass 54 routes / 3,707 samples.
+## Remaining release gates
 
-### Final rerun limitation
+- Real-client first-person stairs, jumping, boarding and disembarking; stationary
+  and moving dock/water transitions, doors, pool and chunk boundaries.
+- Two real clients, latency and correction telemetry, distant regions, disconnect /
+  reconnect, sustained travel and chunk reloads. Two server probes do not prove
+  multiplayer synchronization.
+- Linux server and Windows client native builds; full-yacht performance and Sable /
+  Veil compatibility with the other vehicles. Existing mock-player tests can log
+  oversized AABB warnings under Sable; passing assertions do not resolve those.
+- Full-size model-to-block/collision integration, dry interiors and pool-water
+  representation, lighting/transparency/culling review.
+- Acquisition and water/clearance checks, ownership/persistence, captain, map,
+  destination validation, width/draft-aware routes, safe stops and chunk lifecycle.
 
-After isolating the prototype run directory and adding its one-fixture cap, the final
-verification attempt stopped during compilation of unrelated concurrent work:
-`GrappleTargeting.java:74,81` references missing `GrapplePhysics.CLEARANCE`.
-Those files were not changed for this task. Consequently the final directory/cap
-revision did not reach GameTests. The measured results above are from the preceding
-completed prototype run; the successful normal-build result predates that concurrent
-compile failure. Rerun both verification commands once the grappling changes compile.
+The full yacht is still a static asset. No finished yacht spawn item or captain is
+registered. Canonical model/textures/exports and existing vehicle movement/cameras
+were not changed by this investigation. Keep feature expansion behind the movement
+gate; no forced seats or passenger teleportation are substitutes.
+
+Local logs: `/private/tmp/yacht-f64-final-verify.log` records the final 67-test candidate pass;
+`/private/tmp/yacht-f64-final-build.log` records the locked native rebuild. These are
+local diagnostics, not shared source. The normal `./gradlew verifyProject --offline` also passed all 61 required tests
+(`/private/tmp/yacht-normal-final-verify.log`). The earlier unrelated grappling compile
+failure has been resolved by concurrent work; it no longer blocks this prototype.

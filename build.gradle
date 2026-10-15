@@ -238,6 +238,19 @@ if (project.hasProperty('yachtPrototype')) {
     def expected = '76d293ce751a01cb9c095a3659b0a41e03e005480bc9d76dfdc73ec7c2eabf7923740c7b077921d42616673c496cd5143569f2085ddcebe174fd91d81e2a04b8'
     if (java.security.MessageDigest.getInstance('SHA-512').digest(sableJar.bytes).encodeHex().toString() != expected)
         throw new GradleException('Unrecognized Sable prototype artifact')
+    if (project.hasProperty('yachtF64')) {
+        if (System.getProperty('os.name') != 'Mac OS X' || System.getProperty('os.arch') != 'aarch64')
+            throw new GradleException('The experimental f64 candidate currently supports macOS arm64 only')
+        def manifestFile = file('build/yacht/sable-f64-local.json')
+        if (!manifestFile.exists()) throw new GradleException('Build/package the experimental f64 candidate first')
+        def manifest = new groovy.json.JsonSlurper().parse(manifestFile)
+        if (manifest.base_sha512 != expected || manifest.platform != 'macos-arm64-only')
+            throw new GradleException('Invalid f64 candidate provenance')
+        sableJar = file('build/yacht/sable-2.0.6-yacht-f64.jar')
+        if (java.security.MessageDigest.getInstance('SHA-512').digest(sableJar.bytes).encodeHex().toString() != manifest.sha512)
+            throw new GradleException('Experimental f64 candidate hash mismatch')
+    }
+    base.archivesName = "${mod_id}-yacht-prototype"
     sourceSets.main.java.srcDir 'src/yachtPrototype/java'
     neoForge.runs.configureEach { gameDirectory = file('build/yacht/run') }
     dependencies { implementation files(sableJar) }

@@ -1,0 +1,437 @@
+diff --git a/sable_rapier/src/main/rust/Cargo.lock b/sable_rapier/src/main/rust/Cargo.lock
+index d75741c..da1e029 100644
+--- a/sable_rapier/src/main/rust/Cargo.lock
++++ b/sable_rapier/src/main/rust/Cargo.lock
+@@ -798,10 +798,10 @@ dependencies = [
+ ]
+ 
+ [[package]]
+-name = "parry3d"
+-version = "0.26.0"
++name = "parry3d-f64"
++version = "0.26.1"
+ source = "registry+https://github.com/rust-lang/crates.io-index"
+-checksum = "2e04d21bda5249438b5695e7f08f1655524a6025bcdb186c324b7a66562f2d61"
++checksum = "d6f7e4d41f17de279308ca679ae0e30e7eef68e36088dd5a34e7d7923461cf0d"
+ dependencies = [
+  "approx",
+  "arrayvec",
+@@ -821,7 +821,6 @@ dependencies = [
+  "slab",
+  "smallvec",
+  "spade",
+- "static_assertions",
+  "thiserror 2.0.18",
+ ]
+ 
+@@ -897,7 +896,7 @@ dependencies = [
+ ]
+ 
+ [[package]]
+-name = "rapier3d"
++name = "rapier3d-f64"
+ version = "0.32.0"
+ source = "git+https://github.com/ryanhcode/rapier?rev=38e92f117590862481a53df6fc69a5d893e29186#38e92f117590862481a53df6fc69a5d893e29186"
+ dependencies = [
+@@ -907,14 +906,13 @@ dependencies = [
+  "log",
+  "nalgebra",
+  "num-traits",
+- "parry3d",
++ "parry3d-f64",
+  "profiling",
+  "rayon",
+  "serde",
+  "simba",
+  "static_assertions",
+  "thiserror 2.0.18",
+- "wide",
+ ]
+ 
+ [[package]]
+@@ -1016,7 +1014,7 @@ dependencies = [
+  "jni",
+  "log",
+  "marten",
+- "rapier3d",
++ "rapier3d-f64",
+  "rayon",
+ ]
+ 
+diff --git a/sable_rapier/src/main/rust/marten/src/level.rs b/sable_rapier/src/main/rust/marten/src/level.rs
+index 2f3b491..382ca91 100644
+--- a/sable_rapier/src/main/rust/marten/src/level.rs
++++ b/sable_rapier/src/main/rust/marten/src/level.rs
+@@ -81,15 +81,15 @@ fn lookup(self, _env: &mut JNIEnv<'local>) -> jni::errors::Result<Self::Output>
+ pub struct VoxelColliderData {
+     /// Collision boxes within the 0-1 voxel space.
+     /// Formatted [min_x, min_y, min_z, max_x, max_y, max_z]
+-    pub collision_boxes: Vec<(f32, f32, f32, f32, f32, f32)>,
++    pub collision_boxes: Vec<(f64, f64, f64, f64, f64, f64)>,
+ 
+     /// If this should be treated as a fluid for buoyancy
+     pub is_fluid: bool,
+ 
+     /// The friction multiplier
+-    pub friction: f32,
+-    pub volume: f32,
+-    pub restitution: f32,
++    pub friction: f64,
++    pub volume: f64,
++    pub restitution: f64,
+ 
+     /// If this block has special contact behavior
+     pub contact_events: Option<GlobalRef>,
+diff --git a/sable_rapier/src/main/rust/marten/src/lib.rs b/sable_rapier/src/main/rust/marten/src/lib.rs
+index 6e74d2d..6ee519a 100644
+--- a/sable_rapier/src/main/rust/marten/src/lib.rs
++++ b/sable_rapier/src/main/rust/marten/src/lib.rs
+@@ -1,4 +1,4 @@
+ pub mod level;
+ pub mod octree;
+ 
+-pub type Real = f32;
++pub type Real = f64;
+diff --git a/sable_rapier/src/main/rust/marten/src/octree.rs b/sable_rapier/src/main/rust/marten/src/octree.rs
+index f771d34..6c471d2 100644
+--- a/sable_rapier/src/main/rust/marten/src/octree.rs
++++ b/sable_rapier/src/main/rust/marten/src/octree.rs
+@@ -4,7 +4,7 @@
+ const MAX_SIZE: i32 = i32::MAX - 8 * 2;
+ 
+ /// The fraction to resize an octree buffer by when it is full
+-const RESIZE_FRACTION: f32 = 1.5;
++const RESIZE_FRACTION: f64 = 1.5;
+ 
+ /// An octree containing collision data about sublevels
+ #[derive(Debug)]
+@@ -74,7 +74,7 @@ fn allocate_branch(&mut self) -> i32 {
+ 
+         // if there is no free space, allocate at the end
+         if self.size + 8 > self.buffer.len() as i32 {
+-            let new_size = (self.buffer.len() as f32 * RESIZE_FRACTION).ceil() as i32;
++            let new_size = (self.buffer.len() as f64 * RESIZE_FRACTION).ceil() as i32;
+ 
+             if new_size > MAX_SIZE {
+                 panic!("Octree buffer is full");
+diff --git a/sable_rapier/src/main/rust/rapier/Cargo.toml b/sable_rapier/src/main/rust/rapier/Cargo.toml
+index ccdfa03..0a58f28 100644
+--- a/sable_rapier/src/main/rust/rapier/Cargo.toml
++++ b/sable_rapier/src/main/rust/rapier/Cargo.toml
+@@ -12,8 +12,7 @@ colored.workspace = true
+ log.workspace = true
+ humantime.workspace = true
+ 
+-rapier3d = { git = "https://github.com/ryanhcode/rapier", rev = "38e92f117590862481a53df6fc69a5d893e29186", features = [
+-    "simd-nightly",
++rapier3d = { package = "rapier3d-f64", git = "https://github.com/ryanhcode/rapier", rev = "38e92f117590862481a53df6fc69a5d893e29186", features = [
+     "parallel",
+ ] }
+ #rapier3d = { version = "0.26.1", features = [ "simd-stable" ] }
+diff --git a/sable_rapier/src/main/rust/rapier/src/algo.rs b/sable_rapier/src/main/rust/rapier/src/algo.rs
+index 185e0a1..297b165 100644
+--- a/sable_rapier/src/main/rust/rapier/src/algo.rs
++++ b/sable_rapier/src/main/rust/rapier/src/algo.rs
+@@ -2,7 +2,7 @@
+ 
+ use marten::Real;
+ use marten::level::OCTREE_CHUNK_SHIFT;
+-use rapier3d::glamx::{DVec3, IVec3, Pose3};
++use rapier3d::glamx::{DVec3, IVec3, DPose3 as Pose3};
+ use rapier3d::math::Vec3;
+ use rapier3d::na::SimdComplexField;
+ use rayon::iter::ParallelIterator;
+@@ -76,7 +76,7 @@ struct StackObject {
+             let node_size = 1 << (octree.log_size as u32 - entry.depth);
+ 
+             // Calculate the center and radius for this node
+-            let node_center = entry.min.as_vec3() + node_size as f32 / 2.0;
++            let node_center = entry.min.as_dvec3() + node_size as f64 / 2.0;
+             let transformed_center = isometry.rotation.mul_vec3(node_center) + translation;
+             let radius = node_size as Real / 2.0 * 1.7321 + prediction;
+ 
+@@ -155,7 +155,7 @@ fn get_overlapping_nodes(
+     liquid: bool,
+ ) -> (bool, Option<Vec<IVec3>>) {
+     // biggest power of two that doesn't go over radius
+-    let log2 = ((dist * 2.0).simd_ln() / 2.0f32.simd_ln()).floor() as i32;
++    let log2 = ((dist * 2.0).simd_ln() / 2.0f64.simd_ln()).floor() as i32;
+ 
+     let log2 = if let Some(other_handle) = other_handle {
+         let Some(oct) = &other_handle.octree else {
+@@ -166,8 +166,8 @@ fn get_overlapping_nodes(
+         min(log2, OCTREE_CHUNK_SHIFT)
+     };
+ 
+-    let min_block_pos = ((pos - dist).as_dvec3() + com_offset).floor().as_ivec3();
+-    let max_block_pos = ((pos + dist).as_dvec3() + com_offset).floor().as_ivec3();
++    let min_block_pos = ((pos - dist) + com_offset).floor().as_ivec3();
++    let max_block_pos = ((pos + dist) + com_offset).floor().as_ivec3();
+ 
+     if let Some(other_handle) = other_handle {
+         let other_min = other_handle.local_bounds_min.unwrap();
+diff --git a/sable_rapier/src/main/rust/rapier/src/boxes.rs b/sable_rapier/src/main/rust/rapier/src/boxes.rs
+index faf5a3e..0cc47d8 100644
+--- a/sable_rapier/src/main/rust/rapier/src/boxes.rs
++++ b/sable_rapier/src/main/rust/rapier/src/boxes.rs
+@@ -4,7 +4,7 @@
+ use marten::Real;
+ use rapier3d::dynamics::RigidBodyBuilder;
+ use rapier3d::geometry::{ColliderBuilder, SharedShape};
+-use rapier3d::glamx::Quat;
++use rapier3d::glamx::DQuat as Quat;
+ use rapier3d::math::Vec3;
+ 
+ use crate::scene::LevelColliderID;
+diff --git a/sable_rapier/src/main/rust/rapier/src/buoyancy.rs b/sable_rapier/src/main/rust/rapier/src/buoyancy.rs
+index 42d40b7..0b7c745 100644
+--- a/sable_rapier/src/main/rust/rapier/src/buoyancy.rs
++++ b/sable_rapier/src/main/rust/rapier/src/buoyancy.rs
+@@ -54,7 +54,7 @@ pub fn compute_buoyancy(scene: &PhysicsScene) {
+         let complex = (local_bounds_max - local_bounds_min).element_sum() < 10;
+         for (static_pos, dynamic_pos) in pairs.iter() {
+             let local_pos = dynamic_pos.as_dvec3() + 0.5;
+-            let local_pos = (local_pos - center_of_mass).as_vec3();
++            let local_pos = local_pos - center_of_mass;
+ 
+             if complex {
+                 for i in 0..8 {
+@@ -151,7 +151,7 @@ fn do_drag(
+     let point = body.position().transform_point(*point);
+ 
+     let overlap = Aabb::new(point - size, point + size)
+-        .intersection(&Aabb::new(static_pos.as_vec3(), static_pos.as_vec3() + 1.0));
++        .intersection(&Aabb::new(static_pos.as_dvec3(), static_pos.as_dvec3() + 1.0));
+ 
+     if overlap.is_none() {
+         return;
+diff --git a/sable_rapier/src/main/rust/rapier/src/collider.rs b/sable_rapier/src/main/rust/rapier/src/collider.rs
+index 7be926f..6ef02b0 100644
+--- a/sable_rapier/src/main/rust/rapier/src/collider.rs
++++ b/sable_rapier/src/main/rust/rapier/src/collider.rs
+@@ -5,7 +5,7 @@
+ use rapier3d::glamx::{DVec3, IVec3};
+ use rapier3d::parry::bounding_volume::{Aabb, BoundingSphere};
+ use rapier3d::prelude::*;
+-use std::f32::consts::PI;
++use std::f64::consts::PI;
+ 
+ const WORLD_SIZE: Real = 30_000_000.0;
+ 
+@@ -33,8 +33,8 @@ fn scaled(self, _scale: &Vector) -> Self {
+ 
+ pub fn compute_local_aabb_from_bounds(min: IVec3, max: IVec3, com: DVec3) -> Aabb {
+     Aabb::new(
+-        (min.as_dvec3() - com).as_vec3(),
+-        (max.as_dvec3() + 1.0 - com).as_vec3(),
++        min.as_dvec3() - com,
++        max.as_dvec3() + 1.0 - com,
+     )
+ }
+ 
+diff --git a/sable_rapier/src/main/rust/rapier/src/contraptions.rs b/sable_rapier/src/main/rust/rapier/src/contraptions.rs
+index 480cab3..ba58d70 100644
+--- a/sable_rapier/src/main/rust/rapier/src/contraptions.rs
++++ b/sable_rapier/src/main/rust/rapier/src/contraptions.rs
+@@ -6,7 +6,7 @@
+ use marten::Real;
+ use rapier3d::dynamics::RigidBodyBuilder;
+ use rapier3d::geometry::{ColliderBuilder, SharedShape};
+-use rapier3d::glamx::{DVec3, Pose3, Quat};
++use rapier3d::glamx::{DVec3, DPose3 as Pose3, DQuat as Quat};
+ use rapier3d::math::Vec3;
+ use rapier3d::pipeline::{ActiveEvents, ActiveHooks};
+ use rapier3d::prelude::{RigidBodyHandle, RigidBodyVelocity};
+diff --git a/sable_rapier/src/main/rust/rapier/src/dispatcher.rs b/sable_rapier/src/main/rust/rapier/src/dispatcher.rs
+index 8fdbe03..5463958 100644
+--- a/sable_rapier/src/main/rust/rapier/src/dispatcher.rs
++++ b/sable_rapier/src/main/rust/rapier/src/dispatcher.rs
+@@ -1,7 +1,7 @@
+ use crate::collider::LevelCollider;
+ use log::info;
+ use rapier3d::geometry::{ContactManifoldData, Shape};
+-use rapier3d::glamx::{DVec3, IVec3, Pose3};
++use rapier3d::glamx::{DVec3, IVec3, DPose3 as Pose3};
+ use rapier3d::math::Vec3;
+ use rapier3d::parry::query::details::{NormalConstraints, contact_manifold_cuboid_cuboid_shapes};
+ use rapier3d::parry::query::{
+@@ -702,8 +702,8 @@ fn adjust_aabb_for_body(
+             let local_bounds_max = body.local_bounds_max.unwrap();
+ 
+             let body_aabb = Aabb::new(
+-                (local_bounds_min.as_dvec3() - center_of_mass).as_vec3() - prediction,
+-                (local_bounds_max.as_dvec3() - center_of_mass).as_vec3() - prediction,
++                (local_bounds_min.as_dvec3() - center_of_mass) - prediction,
++                (local_bounds_max.as_dvec3() - center_of_mass) - prediction,
+             );
+ 
+             local_aabb = local_aabb.intersection(&body_aabb).unwrap_or(local_aabb);
+@@ -719,8 +719,8 @@ fn calculate_local_bounds(
+         center_of_mass: DVec3,
+         prediction: Real,
+     ) -> (IVec3, IVec3) {
+-        let mins = aabb.mins.as_dvec3() + center_of_mass - prediction as f64;
+-        let maxs = aabb.maxs.as_dvec3() + center_of_mass + prediction as f64;
++        let mins = aabb.mins + center_of_mass - prediction as f64;
++        let maxs = aabb.maxs + center_of_mass + prediction as f64;
+ 
+         let local_min = mins.floor().as_ivec3();
+         let local_max = maxs.floor().as_ivec3();
+@@ -770,8 +770,8 @@ fn is_interior_collision<ManifoldData: Default + Clone, ContactData: Default + C
+             || (collider_info_1.unwrap().local_bounds_min.unwrap()
+                 != collider_info_1.unwrap().local_bounds_max.unwrap())
+         {
+-            let world_p1 = (point.local_p1 * 0.997 + center).as_dvec3() + center_of_mass_1;
+-            let normal1 = manifold.local_n1.as_dvec3();
++            let world_p1 = (point.local_p1 * 0.997 + center) + center_of_mass_1;
++            let normal1 = manifold.local_n1;
+ 
+             let displaced_p1 = world_p1 + normal1 * 0.01;
+ 
+@@ -781,11 +781,11 @@ fn is_interior_collision<ManifoldData: Default + Clone, ContactData: Default + C
+         }
+ 
+         if collider_info_2.local_bounds_min.unwrap() != collider_info_2.local_bounds_max.unwrap() {
+-            let normal2 = manifold.local_n2.as_dvec3();
++            let normal2 = manifold.local_n2;
+ 
+             // we have to "pull in the points" a tiny bit incase they're outside of the block slightly off-normal
+             let world_p2 = (point.local_p2 * INTERIOR_COLLISION_SCALE_FACTOR + other_center)
+-                .as_dvec3()
++                
+                 + center_of_mass_2;
+ 
+             let displaced_p2 = world_p2 + normal2 * INTERIOR_COLLISION_CHECK_DISTANCE;
+diff --git a/sable_rapier/src/main/rust/rapier/src/event_handler.rs b/sable_rapier/src/main/rust/rapier/src/event_handler.rs
+index f2aefd0..89dedbe 100644
+--- a/sable_rapier/src/main/rust/rapier/src/event_handler.rs
++++ b/sable_rapier/src/main/rust/rapier/src/event_handler.rs
+@@ -57,10 +57,10 @@ fn handle_contact_force_event(
+                     body_a: level_collider_a.id,
+                     body_b: level_collider_b.id,
+                     force_amount: total_force_magnitude as f64,
+-                    local_normal_a: local_n1.as_dvec3(),
+-                    local_normal_b: local_n2.as_dvec3(),
+-                    local_point_a: local_p1.as_dvec3(),
+-                    local_point_b: local_p2.as_dvec3(),
++                    local_normal_a: local_n1,
++                    local_normal_b: local_n2,
++                    local_point_a: local_p1,
++                    local_point_b: local_p2,
+                 });
+             }
+         }
+diff --git a/sable_rapier/src/main/rust/rapier/src/hooks.rs b/sable_rapier/src/main/rust/rapier/src/hooks.rs
+index 47cdd95..ea5a67e 100644
+--- a/sable_rapier/src/main/rust/rapier/src/hooks.rs
++++ b/sable_rapier/src/main/rust/rapier/src/hooks.rs
+@@ -198,7 +198,7 @@ fn handle_block_params(
+         };
+ 
+         let local = isometry.inverse_transform_point(*global_point);
+-        let block_coord_d: DVec3 = local.as_dvec3() + center_of_mass;
++        let block_coord_d: DVec3 = local + center_of_mass;
+ 
+         if block_id == 0 {
+             return (tangent_velo, false, 1.0, 0.0);
+diff --git a/sable_rapier/src/main/rust/rapier/src/joints.rs b/sable_rapier/src/main/rust/rapier/src/joints.rs
+index 4d99b28..5d64caa 100644
+--- a/sable_rapier/src/main/rust/rapier/src/joints.rs
++++ b/sable_rapier/src/main/rust/rapier/src/joints.rs
+@@ -8,7 +8,7 @@
+ use rapier3d::dynamics::{
+     GenericJointBuilder, JointAxesMask, JointAxis, RevoluteJointBuilder, SpringCoefficients,
+ };
+-use rapier3d::glamx::{DVec3, Quat};
++use rapier3d::glamx::{DVec3, DQuat as Quat};
+ use rapier3d::math::Vec3;
+ use rapier3d::prelude::{FixedJointBuilder, ImpulseJointHandle};
+ use std::collections::HashMap;
+@@ -62,7 +62,7 @@ pub fn tick(scene: &PhysicsScene) {
+         let impulse_joint = sim.impulse_joint_set.get_mut(joint.handle, false).unwrap();
+         impulse_joint.data.contacts_enabled = joint.contacts_enabled;
+         if !joint.fixed && joint.rotation_a.is_none() {
+-            impulse_joint.data.set_local_axis1(joint.normal_a.as_vec3());
++            impulse_joint.data.set_local_axis1(joint.normal_a);
+         }
+ 
+         let center_of_mass_1 = if let Some(id_a) = joint.id_a
+@@ -76,9 +76,9 @@ pub fn tick(scene: &PhysicsScene) {
+         let local_anchor_1 = joint.pos_a - center_of_mass_1;
+         impulse_joint
+             .data
+-            .set_local_anchor1(local_anchor_1.as_vec3());
++            .set_local_anchor1(local_anchor_1);
+         if !joint.fixed && joint.rotation_b.is_none() {
+-            impulse_joint.data.set_local_axis2(joint.normal_b.as_vec3());
++            impulse_joint.data.set_local_axis2(joint.normal_b);
+         }
+ 
+         let center_of_mass_2 = if let Some(id_b) = joint.id_b
+@@ -92,7 +92,7 @@ pub fn tick(scene: &PhysicsScene) {
+         let local_anchor_2 = joint.pos_b - center_of_mass_2;
+         impulse_joint
+             .data
+-            .set_local_anchor2(local_anchor_2.as_vec3());
++            .set_local_anchor2(local_anchor_2);
+ 
+         if let Some(rotation_a) = joint.rotation_a {
+             impulse_joint.data.local_frame1.rotation = rotation_a;
+diff --git a/sable_rapier/src/main/rust/rapier/src/lib.rs b/sable_rapier/src/main/rust/rapier/src/lib.rs
+index 970b124..919e1ee 100644
+--- a/sable_rapier/src/main/rust/rapier/src/lib.rs
++++ b/sable_rapier/src/main/rust/rapier/src/lib.rs
+@@ -16,7 +16,7 @@
+ use jni::objects::{JClass, JDoubleArray, JIntArray};
+ use jni::sys::{jboolean, jdouble, jint, jlong};
+ use jni::{JNIEnv, JavaVM};
+-use rapier3d::glamx::{DVec3, Quat};
++use rapier3d::glamx::{DVec3, DQuat as Quat};
+ use std::collections::HashMap;
+ use std::io::ErrorKind::BrokenPipe;
+ use std::io::{self, Write};
+diff --git a/sable_rapier/src/main/rust/rapier/src/rope.rs b/sable_rapier/src/main/rust/rapier/src/rope.rs
+index 84a3101..98f7004 100644
+--- a/sable_rapier/src/main/rust/rapier/src/rope.rs
++++ b/sable_rapier/src/main/rust/rapier/src/rope.rs
+@@ -66,7 +66,7 @@ pub fn tick(scene: &PhysicsScene) {
+                     .impulse_joint_set
+                     .get_mut(attachment.joint, false)
+                     .unwrap();
+-                impulse_joint.data.set_local_anchor1(local_anchor.as_vec3());
++                impulse_joint.data.set_local_anchor1(local_anchor);
+             }
+         }
+ 
+@@ -86,7 +86,7 @@ pub fn tick(scene: &PhysicsScene) {
+                     .impulse_joint_set
+                     .get_mut(attachment.joint, false)
+                     .unwrap();
+-                impulse_joint.data.set_local_anchor1(local_anchor.as_vec3());
++                impulse_joint.data.set_local_anchor1(local_anchor);
+             }
+         }
+     }
+diff --git a/sable_rapier/src/main/rust/rapier/src/voxel_collider.rs b/sable_rapier/src/main/rust/rapier/src/voxel_collider.rs
+index 4b37676..adc38b6 100644
+--- a/sable_rapier/src/main/rust/rapier/src/voxel_collider.rs
++++ b/sable_rapier/src/main/rust/rapier/src/voxel_collider.rs
+@@ -112,12 +112,12 @@ pub extern "system" fn Java_dev_ryanhcode_sable_physics_impl_rapier_Rapier3D_add
+ 
+     if let Some(data) = &mut state.voxel_collider_map.voxel_colliders[index as usize] {
+         data.collision_boxes.push((
+-            bounds[0] as f32,
+-            bounds[1] as f32,
+-            bounds[2] as f32,
+-            bounds[3] as f32,
+-            bounds[4] as f32,
+-            bounds[5] as f32,
++            bounds[0] as f64,
++            bounds[1] as f64,
++            bounds[2] as f64,
++            bounds[3] as f64,
++            bounds[4] as f64,
++            bounds[5] as f64,
+         ));
+     }
+ }

@@ -26,11 +26,15 @@ import java.util.Map;
 /** Disposable test-world fixture. No yacht ownership, navigation, or passenger teleporting. */
 @EventBusSubscriber(modid = PracticeMod.MODID)
 public final class YachtFloorPrototype {
-    private record Drive(double height, long startTick) {}
+    private record Drive(double height, long startTick, boolean turn) {}
     public static int physicsSteps;
     private static final Map<ServerSubLevel, Drive> DRIVES = new IdentityHashMap<>();
 
     public static ServerSubLevel spawn(ServerLevel level, double x, double y, double z) {
+        return spawn(level,x,y,z,false);
+    }
+
+    public static ServerSubLevel spawn(ServerLevel level, double x, double y, double z, boolean turn) {
         var container = SubLevelContainer.getContainer(level);
         if (container == null) throw new IllegalStateException("Sable container unavailable");
         var pose = new Pose3d();
@@ -61,8 +65,19 @@ public final class YachtFloorPrototype {
         blocks.setBlock(new BlockPos(9,1,4),Blocks.OAK_STAIRS.defaultBlockState(),3);
         sub.updateLastPose();
         container.addForceLoadTicket(sub, dev.ryanhcode.sable.api.sublevel.ticket.SubLevelLoadingTicketType.COMMAND_FORCED, net.minecraft.util.Unit.INSTANCE);
-        DRIVES.put(sub, new Drive(y, level.getGameTime()));
+        DRIVES.put(sub, new Drive(y, level.getGameTime(), turn));
         return sub;
+    }
+
+    /** Hold a fixture until its contact probes are ready; no pose changes. */
+    public static void hold(ServerSubLevel sub) {
+        var drive=DRIVES.get(sub);
+        DRIVES.put(sub,new Drive(drive.height(),Long.MAX_VALUE,drive.turn()));
+    }
+
+    public static void start(ServerSubLevel sub) {
+        var drive=DRIVES.get(sub);
+        DRIVES.put(sub,new Drive(drive.height(),sub.getLevel().getGameTime(),drive.turn()));
     }
 
     private static void step(net.minecraft.world.level.CommonLevelAccessor world,int x,double top,int z) {
@@ -83,7 +98,7 @@ public final class YachtFloorPrototype {
             var handle=RigidBodyHandle.of(sub);
             if (handle==null || sub.getMassTracker()==null) continue;
             var drive=e.getValue();
-            double seconds=(level.getGameTime()-drive.startTick())/20.0;
+            double seconds=drive.startTick()==Long.MAX_VALUE?0:(level.getGameTime()-drive.startTick())/20.0;
             // 2 s settling, bounded acceleration to .8 m/s, cruise, brake, hold.
             double speed=seconds<2?0:seconds<10?(seconds-2)*.1:seconds<20?.8:Math.max(0,.8-(seconds-20)*.1);
             var p=sub.logicalPose().position();
@@ -93,7 +108,9 @@ public final class YachtFloorPrototype {
             var desired=new Vector3d(0,Math.clamp((drive.height()-origin.y)*2,-.5,.5),speed);
             // Velocity feedback through the physics API, never pose teleportation.
             var delta=desired.sub(velocity).sub(new Vector3d(gravity).mul(event.getTimeStep()));
-            handle.addLinearAndAngularVelocity(delta,handle.getAngularVelocity(new Vector3d()).negate());
+            var angular=handle.getAngularVelocity(new Vector3d()).negate();
+            if (drive.turn() && seconds>=10 && seconds<20) angular.y+=Math.toRadians(1);
+            handle.addLinearAndAngularVelocity(delta,angular);
         }
     }
 
@@ -134,9 +151,25 @@ public final class YachtFloorPrototype {
                         source.sendFailure(Component.literal("Use an empty, loaded test area: 12 x 8 x 32 ahead.")); return 0;
                     }
                 }
-                spawn(level,p.x,p.y,p.z+3);
-                source.sendSuccess(() -> Component.literal("Disposable moving-floor fixture: +Z 3 blocks. 2s hold, accelerate, cruise, brake. Creative test world only."),false);
+                hold(spawn(level,p.x,p.y,p.z+3));
+                source.sendSuccess(() -> Component.literal("Disposable fixture held at +Z 3 blocks. Board, then /yachtprototype start. Creative test world only."),false);
+                return 1;
+            }))
+            .then(Commands.literal("start").executes(ctx -> {
+                var fixtures=DRIVES.keySet().stream()
+                        .filter(sub -> sub.getLevel()==ctx.getSource().getLevel() && !sub.isRemoved()).toList();
+                if(fixtures.size()!=1) {
+                    ctx.getSource().sendFailure(Component.literal("Spawn one fixture in this dimension first."));
+                    return 0;
+                }
+                if(DRIVES.get(fixtures.getFirst()).startTick()!=Long.MAX_VALUE) {
+                    ctx.getSource().sendFailure(Component.literal("This fixture has already used its checked travel corridor. Restart the disposable world for another run."));
+                    return 0;
+                }
+                start(fixtures.getFirst());
+                ctx.getSource().sendSuccess(() -> Component.literal("Test motion: 2s hold, accelerate, cruise, brake."),false);
                 return 1;
             })));
+
     }
 }
