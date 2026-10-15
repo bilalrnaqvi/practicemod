@@ -103,7 +103,7 @@ public class PracticeMod {
 
     public static final DeferredHolder<EntityType<?>, EntityType<AtvEntity>> ATV_ENTITY =
             ENTITIES.register("atv", () -> EntityType.Builder.<AtvEntity>of(AtvEntity::new, MobCategory.MISC)
-                    .sized(2.2F, 2.4F).eyeHeight(1.9F).clientTrackingRange(12).updateInterval(1)
+                    .sized(1.98F, 2.4F).eyeHeight(1.9F).clientTrackingRange(12).updateInterval(1)
                     .build(MODID + ":atv"));
     public static final DeferredItem<AtvItem> ATV = ITEMS.register("atv",
             () -> new AtvItem(new Item.Properties().stacksTo(1)));

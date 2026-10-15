@@ -1,5 +1,19 @@
 # ATV — off-road prototype
 
+Current proportions (2026-10-15): **1.97 blocks wide × 3.12 long**, with the
+**2.40-block cage height** retained. The user selected the 10% narrower preview.
+The canonical model and generated geometry now use that exterior width; wheel
+track, steering pivot and collision width follow it. Full-size seat padding is
+retained and seat centers are 1.06 blocks apart, with fitted controls/footrests,
+to avoid overlapping standard-player sleeves and leg/bolster intersections.
+Length, height, paint and suspension tuning are unchanged.
+
+Review: `output/crag/two-seat-preview.png` shows the implemented mesh and vanilla
+players. Static fit passes both seats with standard/slim skins and clothing,
+using the existing 0.018-block padding tolerance and intentional grip contact.
+This is software renderer verification; in-game and multiplayer appearance remain
+unreviewed for this width revision.
+
 Get it from **Traversal Gadgets** or **Tools & Utilities**, or run
 `/give @s practicemod:atv`. Use the item on the top of solid ground, then
 right-click the ATV to ride. It seats two players side by side: the first drives,
@@ -64,7 +78,7 @@ The current actual-renderer scale/fit preview is `output/crag/two-seat-preview.p
 `output/crag/steve-scale-preview.png` records the previous single-seat revision.
 `output/crag/model-preview.png` and `detail-preview.png` show the earlier approved art.
 
-The world collision box is a 2.2-block square, 2.4 blocks tall; the longer visible
+The world collision box is a 1.98-block square, 2.4 blocks tall; the longer visible
 bumpers can overlap obstacles slightly. The chassis attitude and wheel travel
 are visual suspension over that upright collision box, not four separate rigid
 wheel colliders.

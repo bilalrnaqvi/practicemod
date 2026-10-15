@@ -34,7 +34,7 @@ import net.minecraft.world.phys.Vec3;
 /** Server-owned quad: actual obstacle hops plus four sampled wheels and a sprung rider/chassis. */
 public class AtvEntity extends Entity {
     // Hip pivot sits above the cushion so the posed thighs rest on its surface.
-    static final double SEAT_HEIGHT = .99, SEAT_Z = -.40, SEAT_X = .56, HIP_OFFSET = .7040625;
+    static final double SEAT_HEIGHT = .99, SEAT_Z = -.40, SEAT_X = .53, HIP_OFFSET = .7040625;
     private final java.util.Set<Integer> turnedPassengers = new java.util.HashSet<>();
     // Heave, roll, steering, four local wheel travels, pitch: one synchronized suspension pose.
     private static final List<EntityDataAccessor<Float>> VISUALS = java.util.stream.IntStream.range(0, 8)

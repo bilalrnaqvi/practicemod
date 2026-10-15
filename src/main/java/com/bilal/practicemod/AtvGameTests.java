@@ -141,7 +141,7 @@ public class AtvGameTests {
             helper.setBlock(new BlockPos(x,1,z),Blocks.STONE);
             for (int y=2;y<7;y++) helper.setBlock(new BlockPos(x,y,z),Blocks.AIR);
         }
-        helper.assertTrue(Math.abs(atv.getBbWidth()-2.2)<.001 && Math.abs(atv.getBbHeight()-2.4)<.001,
+        helper.assertTrue(Math.abs(atv.getBbWidth()-1.98)<.001 && Math.abs(atv.getBbHeight()-2.4)<.001,
                 "full-size tires and cage represented by collision dimensions");
         var rider=helper.makeMockPlayer(GameType.SURVIVAL); rider.startRiding(atv);
         atv.positionRider(rider);
@@ -199,7 +199,7 @@ public class AtvGameTests {
         helper.assertTrue(atv.interact(passenger,InteractionHand.MAIN_HAND).consumesAction(),"passenger boards occupied buggy");
         helper.assertFalse(atv.interact(helper.makeMockPlayer(GameType.SURVIVAL),InteractionHand.MAIN_HAND).consumesAction(),"full buggy rejects third rider");
         atv.positionRider(driver); atv.positionRider(passenger);
-        helper.assertTrue(Math.abs(passenger.getX()-driver.getX()-1.12)<.001,"separate side-by-side seat anchors");
+        helper.assertTrue(Math.abs(passenger.getX()-driver.getX()-2*AtvEntity.SEAT_X)<.001,"separate side-by-side seat anchors");
         helper.assertFalse(driver.getBoundingBox().intersects(passenger.getBoundingBox()),"riders do not overlap");
         atv.acceptInput(passenger,1,1); atv.tick();
         helper.assertTrue(atv.speed()==0,"passenger cannot drive");
