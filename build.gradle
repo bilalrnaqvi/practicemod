@@ -230,3 +230,22 @@ tasks.register('verifyProject') {
     description = 'Build the mod, validate PAL playback, and run dedicated-server GameTests.'
     dependsOn tasks.named('build'), tasks.named('validateBlenderPlayback'), tasks.named('runGameTestServer')
 }
+
+// Isolated moving-floor investigation; not included in normal builds/releases.
+if (project.hasProperty('yachtPrototype')) {
+    def sableJar = file('build/yacht/sable-2.0.6.jar')
+    if (!sableJar.exists()) throw new GradleException('Run python3 tools/yacht/fetch_sable.py first')
+    def expected = '76d293ce751a01cb9c095a3659b0a41e03e005480bc9d76dfdc73ec7c2eabf7923740c7b077921d42616673c496cd5143569f2085ddcebe174fd91d81e2a04b8'
+    if (java.security.MessageDigest.getInstance('SHA-512').digest(sableJar.bytes).encodeHex().toString() != expected)
+        throw new GradleException('Unrecognized Sable prototype artifact')
+    sourceSets.main.java.srcDir 'src/yachtPrototype/java'
+    neoForge.runs.configureEach { gameDirectory = file('build/yacht/run') }
+    dependencies { implementation files(sableJar) }
+    // Companion APIs live in the upstream nested jar; NeoForge loads it at runtime.
+    def companion = layout.buildDirectory.file('yacht/sable-companion-1.6.0.jar').get().asFile
+    def zip = new java.util.zip.ZipFile(sableJar)
+    try {
+        companion.bytes = zip.getInputStream(zip.getEntry('META-INF/jarjar/sable-companion-common-1.21.1-1.6.0.jar')).bytes
+    } finally { zip.close() }
+    dependencies { compileOnly files(companion) }
+}

@@ -1,0 +1,51 @@
+{
+  "release": "2.0.6",
+  "minecraft": "1.21.1",
+  "neoforge_tested": "21.1.235",
+  "java": 21,
+  "modrinth_version": "fg9dTRz9",
+  "url": "https://cdn.modrinth.com/data/T9PomCSv/versions/fg9dTRz9/sable-neoforge-1.21.1-2.0.6.jar",
+  "sha512": "76d293ce751a01cb9c095a3659b0a41e03e005480bc9d76dfdc73ec7c2eabf7923740c7b077921d42616673c496cd5143569f2085ddcebe174fd91d81e2a04b8",
+  "inspected_source_commit": "d501fb3103c3247e20cb2151a99182ad5dd61adb",
+  "source_matches_release_build": "not independently reproduced",
+  "license": "PolyForm Shield License 1.0.0",
+  "bundled": [
+    {
+      "identifier": {
+        "group": "dev.ryanhcode.sable-companion",
+        "artifact": "sable-companion-common-1.21.1"
+      },
+      "version": {
+        "range": "[1.6.0,)",
+        "artifactVersion": "1.6.0"
+      },
+      "path": "META-INF/jarjar/sable-companion-common-1.21.1-1.6.0.jar",
+      "isObfuscated": false
+    },
+    {
+      "identifier": {
+        "group": "dev.ryanhcode.sable",
+        "artifact": "sable_rapier"
+      },
+      "version": {
+        "range": "[2.0.6,)",
+        "artifactVersion": "2.0.6"
+      },
+      "path": "META-INF/jarjar/dev.ryanhcode.sable.sable-sable_rapier-1.21.1-2.0.6.jar",
+      "isObfuscated": false
+    },
+    {
+      "identifier": {
+        "group": "foundry.veil",
+        "artifact": "veil-neoforge-1.21.1"
+      },
+      "version": {
+        "range": "[4.3.2,)",
+        "artifactVersion": "4.3.2"
+      },
+      "path": "META-INF/jarjar/veil-neoforge-1.21.1-4.3.2.jar",
+      "isObfuscated": false
+    }
+  ],
+  "scope": "Opt-in development prototype only; not bundled in normal Practice Mod builds."
+}

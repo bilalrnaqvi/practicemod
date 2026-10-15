@@ -3,7 +3,9 @@
 Status: technical plan with a completed static modeling stage, 2026-10-14. See the
 [editable model handoff](WHITE_HORIZON_MODEL.md) for actual assets, layout corrections
 and static validation. The visual direction is approved; the finished model is not yet
-user-approved. Yacht gameplay, dependencies and moving-floor prototype remain unimplemented.
+user-approved. Yacht gameplay remains unimplemented. An opt-in Sable dependency spike and moving-floor
+fixture now exist; see the [runtime investigation](WHITE_HORIZON_RUNTIME.md) for the
+failed precision gate and reproducible commands. The backend is not approved for release.
 
 Target: Minecraft **1.21.1**, NeoForge **21.1.235**, Java **21**, Mojang names with
 Parchment **2024.11.17**. Start with a luxurious player-owned social space for about
@@ -78,7 +80,8 @@ External evidence checked 2026-10-14 (publisher/source pages, not multiplayer te
   are distinct upstreams. A port would need its own pinned artifact audit.
 
 Planned required addition: Sable on **server and every client**, using a pinned
-1.21.1 NeoForge artifact. No library was installed here. Before adding it, record the
+1.21.1 NeoForge artifact. The planning stage installed no library; the current opt-in spike is documented in
+[the runtime report](WHITE_HORIZON_RUNTIME.md). Before adopting it for release, record the
 release hash, source commit, resolved transitive/bundled dependencies, mod metadata,
 license obligations and native architecture support (including this Mac and Linux
 server). Do not infer required dependencies from a build's optional compatibility
