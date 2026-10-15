@@ -14,7 +14,7 @@ import net.neoforged.neoforge.network.registration.PayloadRegistrar;
 public class JetpackNetworking {
     public static void register(RegisterPayloadHandlersEvent event) {
         // Vehicle input requires matching client/server versions.
-        PayloadRegistrar registrar = event.registrar("16");
+        PayloadRegistrar registrar = event.registrar("17");
         registrar.playToServer(MechanicalDolphinInputPayload.TYPE, MechanicalDolphinInputPayload.STREAM_CODEC, (payload, context) -> {
             if (context.player().getVehicle() instanceof com.bilal.practicemod.MechanicalDolphinEntity dolphin
                     && dolphin.getId() == payload.entityId()) {

@@ -4,8 +4,6 @@ import net.minecraft.server.level.ServerLevel;
 import net.minecraft.sounds.SoundEvents;
 import net.minecraft.sounds.SoundSource;
 import net.minecraft.world.entity.player.Player;
-import net.minecraft.world.level.ClipContext;
-import net.minecraft.world.phys.HitResult;
 import net.minecraft.world.phys.Vec3;
 import net.neoforged.bus.api.EventPriority;
 import net.neoforged.bus.api.SubscribeEvent;
@@ -26,12 +24,9 @@ public final class GrappleHandler {
 
     static boolean start(Player player) {
         if (!available(player)) return reject(player);
-        Vec3 eye = player.getEyePosition();
-        var hit = player.level().clip(new ClipContext(eye,
-                eye.add(player.getLookAngle().scale(GrapplePhysics.RANGE)),
-                ClipContext.Block.COLLIDER, ClipContext.Fluid.NONE, player));
-        if (hit.getType() != HitResult.Type.BLOCK || eye.distanceTo(hit.getLocation()) < 3.0) return reject(player);
-        player.setData(PracticeMod.GRAPPLE_STATE, new GrappleState(true, hit.getLocation(), hit.getBlockPos()));
+        GrappleState target = GrappleTargeting.find(player);
+        if (!target.active()) return reject(player);
+        player.setData(PracticeMod.GRAPPLE_STATE, target);
         player.setData(PracticeMod.GRAPPLE_TICKS, 0);
         player.setData(PracticeMod.UMBRELLA_GLIDER_DEPLOYED, false);
         if (player.level() instanceof ServerLevel level) {
@@ -71,17 +66,32 @@ public final class GrappleHandler {
         player.setData(PracticeMod.GRAPPLE_TICKS, ticks);
         if (!available(player) || !player.isUsingItem()
                 || !player.getUseItem().is(PracticeMod.GRAPPLING_HOOK.get())
-                || ticks > 100 || !anchorValid(player, state)
-                || (ticks > 6 && player.horizontalCollision)) {
+                || ticks > 160 || !anchorValid(player, state)) {
             release(player);
             return;
         }
         Vec3 movement = player.getKnownMovement();
-        if (GrapplePhysics.shouldRelease(player.getEyePosition(), state.anchor(), movement)) {
-            release(player);
+        if (GrapplePhysics.shouldRelease(player.position(), state.anchor(), movement)) {
+            if (GrappleTargeting.clearExit(player, state)) {
+                Vec3 launch = GrapplePhysics.launch(movement, state.outward());
+                player.setDeltaMovement(launch);
+                release(player, launch);
+            } else {
+                release(player);
+            }
             return;
         }
-        player.setDeltaMovement(GrapplePhysics.pull(movement, player.getEyePosition(), state.anchor()));
+        Vec3 next = GrapplePhysics.pull(movement, player.position(), state);
+        // Never force the player through geometry. If the approach touches a wall, climb on
+        // its outside; newly blocked headroom cancels instead of granting a through-wall launch.
+        if (!player.level().noCollision(player, player.getBoundingBox().expandTowards(next))) {
+            next = new Vec3(0, Math.max(0.3, next.y), 0);
+            if (!player.level().noCollision(player, player.getBoundingBox().expandTowards(next))) {
+                release(player);
+                return;
+            }
+        }
+        player.setDeltaMovement(next);
         player.fallDistance = 0;
     }
 
@@ -89,19 +99,19 @@ public final class GrappleHandler {
         if (!player.level().hasChunkAt(state.block())
                 || player.level().getBlockState(state.block()).getCollisionShape(player.level(), state.block()).isEmpty()
                 || player.getEyePosition().distanceTo(state.anchor()) > GrapplePhysics.RANGE + 4) return false;
-        Vec3 eye = player.getEyePosition();
-        // Extend just into the surface so exact face coordinates remain robust at block boundaries.
-        Vec3 end = state.anchor().add(state.anchor().subtract(eye).normalize().scale(0.02));
-        var hit = player.level().clip(new ClipContext(eye, end, ClipContext.Block.COLLIDER, ClipContext.Fluid.NONE, player));
-        return hit.getType() == HitResult.Type.MISS || hit.getBlockPos().equals(state.block());
+        return GrappleTargeting.visible(player, state);
     }
 
     static void release(Player player) {
+        release(player, player.getKnownMovement());
+    }
+
+    private static void release(Player player, Vec3 retainedVelocity) {
         if (!active(player)) return;
         player.setData(PracticeMod.GRAPPLE_STATE, GrappleState.IDLE);
         // Do not zero or replace velocity on detachment. The ordinary movement controller owns
         // the ballistic arc; the umbrella can later spend this finite excess-speed allowance.
-        double speed = player.getKnownMovement().horizontalDistance();
+        double speed = retainedVelocity.horizontalDistance();
         if (available(player) && Double.isFinite(speed) && speed > UmbrellaGliderPhysics.HORIZONTAL_SPEED_CAP) {
             player.setData(PracticeMod.GRAPPLE_GLIDE_CAP, (float) Math.min(GrapplePhysics.MAX_SPEED, speed));
             player.setData(PracticeMod.GRAPPLE_COAST_TICKS, 200);

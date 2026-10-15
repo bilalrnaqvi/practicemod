@@ -132,6 +132,6 @@
   "key.practicemod.submarine_cabin": "Leave submarine pilot seat",
   "container.practicemod.submarine_storage": "Submarine Storage",
   "item.practicemod.grappling_hook": "Grappling Hook",
-  "item.practicemod.grappling_hook.use_hint": "Hold use: latch and pull. Release: fling with momentum.",
+  "item.practicemod.grappling_hook.use_hint": "Aim near an edge circle. Hold use to pull and launch; release early to cancel.",
   "item.practicemod.grappling_hook.glide_hint": "Keep an umbrella in your offhand to glide after the fling."
 }

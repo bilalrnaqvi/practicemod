@@ -1,0 +1,14 @@
+// Isolate grapple checks from concurrent feature builds and saved gameplay worlds.
+// ./gradlew verifyProject --offline --no-configuration-cache -I tools/grapple_review.init.gradle
+// ./gradlew runClient --offline --no-configuration-cache -I tools/grapple_review.init.gradle
+beforeProject { p ->
+    p.layout.buildDirectory.set(p.file('build/grapple-verification'))
+    p.afterEvaluate {
+        p.neoForge.runs.configureEach { gameDirectory = p.file('build/grapple-verification/run') }
+        p.tasks.withType(JavaExec).configureEach {
+            if (name == 'runClient') {
+                jvmArgs "-Dpracticemod.grappleRenderCheck=${p.file('output/grapple-edge-review').absolutePath}"
+            }
+        }
+    }
+}
