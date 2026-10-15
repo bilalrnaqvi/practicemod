@@ -51,16 +51,20 @@ public final class YachtFloorGameTests {
         int[] target={0};
         h.runAfterDelay(50,()->player.setPos(YachtFloorPrototype.worldPoint(ship,2,1.05,1.25)));
         for(int tick=51;tick<=430;tick++) h.runAfterDelay(tick,()->{
-            player.tick();
-            if(target[0]>=targets.length) return;
+            if(target[0]>=targets.length) {
+                player.setDeltaMovement(0,player.getDeltaMovement().y,0);
+                player.tick();
+                return;
+            }
             var center=ship.getPlot().getCenterBlock();
             var local=ship.logicalPose().transformPositionInverse(player.position())
                 .subtract(center.getX(),center.getY(),center.getZ());
             var destination=targets[target[0]];
             var delta=new Vec3(destination.x-local.x,0,destination.z-local.z);
-            if(delta.horizontalDistance()<.12) { target[0]++; return; }
-            var step=ship.logicalPose().transformNormal(delta.normalize().scale(.08));
-            player.move(net.minecraft.world.entity.MoverType.SELF,new Vec3(step.x,-.08,step.z));
+            if(delta.horizontalDistance()<.12) target[0]++;
+            var step=delta.horizontalDistance()<.12?Vec3.ZERO:ship.logicalPose().transformNormal(delta.normalize().scale(.08));
+            player.setDeltaMovement(step.x,player.getDeltaMovement().y,step.z);
+            player.tick();
         });
         h.runAfterDelay(440,()->{
             try {
@@ -71,6 +75,178 @@ public final class YachtFloorGameTests {
             } finally { player.discard(); YachtFloorPrototype.dispose(ship); }
             h.succeed();
         });
+    }
+
+    @GameTest(template="empty", batch="yacht_stair_return", timeoutTicks=800)
+    public void unmountedPlayerDescendsMovingStaircase(GameTestHelper h) {
+        for(int x=-1;x<=1;x++) for(int z=-1;z<=2;z++) h.getLevel().getChunk(x,z);
+        var ship=YachtFloorPrototype.spawn(h.getLevel(),0,100,0);
+        var player=h.makeMockPlayer(net.minecraft.world.level.GameType.SURVIVAL);
+        player.setInvulnerable(true);
+        Vec3[] targets={new Vec3(4.5,0,2.5),new Vec3(4.5,0,6.5),
+                new Vec3(2,0,6.5),new Vec3(2,0,1.25),new Vec3(8.5,0,1.25)};
+        int[] target={0};
+        h.runAfterDelay(50,()->player.setPos(YachtFloorPrototype.worldPoint(ship,6.5,5.05,2.5)));
+        for(int tick=51;tick<=600;tick++) h.runAfterDelay(tick,()->{
+            var center=ship.getPlot().getCenterBlock();
+            var local=ship.logicalPose().transformPositionInverse(player.position())
+                    .subtract(center.getX(),center.getY(),center.getZ());
+            Vec3 step=Vec3.ZERO;
+            if(target[0]<targets.length) {
+                var delta=targets[target[0]].subtract(local).multiply(1,0,1);
+                if(delta.horizontalDistance()<.12) target[0]++;
+                else step=ship.logicalPose().transformNormal(delta.normalize().scale(.08));
+            }
+            player.setDeltaMovement(step.x,player.getDeltaMovement().y,step.z);
+            player.tick();
+        });
+        h.runAfterDelay(610,()->{
+            try {
+                h.assertFalse(player.isPassenger(),"descending player stays unmounted");
+                h.assertTrue(target[0]==targets.length,"descent stopped at waypoint "+target[0]);
+                h.assertTrue(Math.abs(player.getY()-YachtFloorPrototype.worldPoint(ship,8.5,1,1.25).y)<.15,
+                        "player reaches lower deck after descent");
+            } finally { player.discard(); YachtFloorPrototype.dispose(ship); }
+            h.succeed();
+        });
+    }
+
+    @GameTest(template="empty", batch="yacht_dock", timeoutTicks=700)
+    public void unmountedPlayerBoardsAndLeavesMovingFloor(GameTestHelper h) {
+        runDockProbe(h,true);
+    }
+
+    @GameTest(template="empty", batch="yacht_dock_stationary", timeoutTicks=700)
+    public void unmountedPlayerBoardsAndLeavesStationaryFloor(GameTestHelper h) {
+        runDockProbe(h,false);
+    }
+
+    @GameTest(template="empty", batch="yacht_dock_clearance", timeoutTicks=50)
+    public void reviewDockRejectsOccupiedClearanceWithoutReplacingTerrain(GameTestHelper h) {
+        for(int x=-1;x<=1;x++) for(int z=-1;z<=2;z++) h.getLevel().getChunk(x,z);
+        var obstruction=new net.minecraft.core.BlockPos(0,120,0);
+        var original=h.getLevel().getBlockState(obstruction);
+        h.getLevel().setBlockAndUpdate(obstruction,net.minecraft.world.level.block.Blocks.GOLD_BLOCK.defaultBlockState());
+        boolean rejected=false;
+        try { YachtFloorPrototype.spawnDockFixture(h.getLevel(),-4,120,0); }
+        catch(IllegalArgumentException expected) { rejected=true; }
+        try {
+            h.assertTrue(rejected,"occupied review corridor must reject placement");
+            h.assertTrue(h.getLevel().getBlockState(obstruction).is(net.minecraft.world.level.block.Blocks.GOLD_BLOCK),
+                    "placement must preserve obstruction");
+            h.assertTrue(h.getLevel().getBlockState(new net.minecraft.core.BlockPos(-2,120,0)).isAir(),
+                    "rejected placement must not leave a partial dock");
+        } finally { h.getLevel().setBlockAndUpdate(obstruction,original); }
+        h.succeed();
+    }
+
+    private void runDockProbe(GameTestHelper h, boolean moving) {
+        for(int x=-1;x<=1;x++) for(int z=-1;z<=2;z++) h.getLevel().getChunk(x,z);
+        var ship=YachtFloorPrototype.spawnDockFixture(h.getLevel(),-4,100,0);
+        if(moving) YachtFloorPrototype.start(ship);
+        var player=h.makeMockPlayer(net.minecraft.world.level.GameType.SURVIVAL);
+        player.setInvulnerable(true);
+        Runnable cleanup=()->{
+            player.discard(); YachtFloorPrototype.dispose(ship);
+        };
+        boolean[] done={false};
+        int[] phase={0}, leftAt={-1};
+        Vec3[] onDock={null};
+        h.runAfterDelay(50,()->player.setPos(-2,101,1.25));
+        for(int tick=51;tick<=600;tick++) {
+            final int now=tick;
+            h.runAfterDelay(tick,()->{
+                if(done[0]) return;
+                try {
+                h.assertFalse(player.isPassenger(),"boarding does not mount player");
+                var center=ship.getPlot().getCenterBlock();
+                var local=ship.logicalPose().transformPositionInverse(player.position())
+                        .subtract(center.getX(),center.getY(),center.getZ());
+                Vec3 step=Vec3.ZERO;
+                if(phase[0]<2) {
+                    double targetX=phase[0]==0?8.5:-2;
+                    var delta=new Vec3(targetX-local.x,0,1.25-local.z);
+                    if(delta.horizontalDistance()<.12) {
+                        phase[0]++;
+                        if(phase[0]==1) h.assertTrue(Math.abs(player.getY()-YachtFloorPrototype.worldPoint(ship,8.5,1,1.25).y)<.15,
+                                "player boarded lower deck: y="+player.getY()+" local="+local);
+                        else {
+                            leftAt[0]=now; onDock[0]=player.position();
+                            System.out.println("YACHT_DOCK moving="+moving+" disembarkedTick="+now+" world="+onDock[0]);
+                        }
+                    } else step=ship.logicalPose().transformNormal(delta.normalize().scale(.08));
+                }
+                player.setDeltaMovement(step.x,player.getDeltaMovement().y,step.z);
+                player.tick();
+                } catch(RuntimeException | AssertionError failure) {
+                    done[0]=true; cleanup.run(); throw failure;
+                }
+            });
+        }
+        h.runAfterDelay(610,()->{
+            try {
+                h.assertTrue(phase[0]==2,"completed dock-to-vessel-to-dock route: "+phase[0]);
+                h.assertTrue(leftAt[0]<500,"disembarked early enough to observe released support");
+                h.assertTrue(Math.abs(player.getY()-101)<.15,"standing on stationary dock");
+                h.assertTrue(player.position().subtract(onDock[0]).horizontalDistance()<.1,
+                        "disembarked player is not carried along with vessel");
+            } finally {
+                done[0]=true; cleanup.run();
+            }
+            h.assertTrue(h.getLevel().getBlockState(new net.minecraft.core.BlockPos(-2,100,0)).isAir(),
+                    "disposal removes the owned review dock");
+            h.succeed();
+        });
+    }
+
+    @GameTest(template="empty", batch="yacht_door", timeoutTicks=500)
+    public void movingDoorBlocksPlayerUntilOpened(GameTestHelper h) {
+        for(int x=-1;x<=1;x++) for(int z=-1;z<=2;z++) h.getLevel().getChunk(x,z);
+        var ship=YachtFloorPrototype.spawn(h.getLevel(),0,100,0);
+        var blocks=ship.getPlot().getEmbeddedLevelAccessor();
+        var door=net.minecraft.world.level.block.Blocks.OAK_DOOR.defaultBlockState()
+                .setValue(net.minecraft.world.level.block.DoorBlock.FACING,net.minecraft.core.Direction.SOUTH);
+        var lower=new net.minecraft.core.BlockPos(8,1,3);
+        for(int x=7;x<=9;x++) for(int y=1;y<=3;y++) if(x!=8 || y==3)
+            blocks.setBlock(new net.minecraft.core.BlockPos(x,y,3),net.minecraft.world.level.block.Blocks.QUARTZ_BLOCK.defaultBlockState(),3);
+        blocks.setBlock(lower,door,3);
+        blocks.setBlock(lower.above(),door.setValue(net.minecraft.world.level.block.DoorBlock.HALF,
+                net.minecraft.world.level.block.state.properties.DoubleBlockHalf.UPPER),3);
+        var player=h.makeMockPlayer(net.minecraft.world.level.GameType.SURVIVAL);
+        player.setInvulnerable(true);
+        boolean[] done={false};
+        h.runAfterDelay(50,()->player.setPos(YachtFloorPrototype.worldPoint(ship,8.5,1.05,1.25)));
+        for(int tick=51;tick<=430;tick++) {
+            final int now=tick;
+            h.runAfterDelay(tick,()->{
+                if(done[0]) return;
+                try {
+                    var center=ship.getPlot().getCenterBlock();
+                    var local=ship.logicalPose().transformPositionInverse(player.position())
+                            .subtract(center.getX(),center.getY(),center.getZ());
+                    if(now==150) {
+                        h.assertTrue(local.z>2 && local.z<3.2,"closed door blocks walking: "+local);
+                        h.assertTrue(Math.abs(local.y-1)<.15,"player remains on floor at closed door");
+                    }
+                    if(now==200) {
+                        blocks.setBlock(lower,blocks.getBlockState(lower).setValue(net.minecraft.world.level.block.DoorBlock.OPEN,true),3);
+                        blocks.setBlock(lower.above(),blocks.getBlockState(lower.above()).setValue(net.minecraft.world.level.block.DoorBlock.OPEN,true),3);
+                    }
+                    var delta=new Vec3(8.5-local.x,0,5.5-local.z);
+                    var step=delta.horizontalDistance()<.12?Vec3.ZERO:ship.logicalPose().transformNormal(delta.normalize().scale(.08));
+                    player.setDeltaMovement(step.x,player.getDeltaMovement().y,step.z);
+                    player.tick();
+                    h.assertFalse(player.isPassenger(),"door crossing is unmounted");
+                    if(now==430) {
+                        h.assertTrue(delta.horizontalDistance()<.15 && Math.abs(local.y-1)<.15,
+                                "open door admits player without falling: "+local);
+                        done[0]=true; player.discard(); YachtFloorPrototype.dispose(ship); h.succeed();
+                    }
+                } catch(RuntimeException | AssertionError failure) {
+                    done[0]=true; player.discard(); YachtFloorPrototype.dispose(ship); throw failure;
+                }
+            });
+        }
     }
 
     private void runProbe(GameTestHelper h, Vec3 p) { runProbe(h,p,false,h::succeed); }

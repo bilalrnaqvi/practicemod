@@ -7,7 +7,8 @@ not be presented as usable gameplay until the movement gate passes.
 
 ## Reproduce the bounded fixture
 
-Use a disposable development world under `build/yacht/run`. Normal builds exclude both the prototype source
+Use a disposable development world under `build/yacht/run`. Automated GameTests use
+`build/yacht/game-tests`, separately from manual review worlds. Normal builds exclude both the prototype source
 and Sable. No yacht spawn item is registered.
 
 ```sh
@@ -32,9 +33,17 @@ corridor on a repeated start. It uses Sable's velocity API and leaves occupants 
 teleport the platform each tick. Test fixtures are removed on normal server shutdown;
 crash recovery and retained inventories are deliberately not implemented here.
 
-The fixture is smaller than the planned complete prototype: pool, gate, doorway,
-player-input/packet telemetry and dock transitions remain to be added after
-the remaining client and boundary checks pass. An armor stand is an initial contact probe, not a substitute
+`/yachtprototype dock` instead creates a four-block-wide stationary review dock
+beside a held fixture. It requires a loaded, empty 17 × 9 × 36 region ahead, rejects
+obstructions before placing anything, and removes its owned stone dock on fixture
+disposal. Fly onto the dock in creative mode, switch to survival, and walk across;
+use `/yachtprototype start` to run the bounded trip. It is an air-space fixture,
+not a water-qualified acquisition flow. Do not reuse manual worlds from failed
+older experiments as clean measurement baselines.
+
+The fixture remains smaller than the planned complete prototype: pool/water, gate,
+player-input/packet telemetry and real-client boundary checks remain. Door changes
+and dock transitions are now covered by server-side tests. An armor stand is an initial contact probe, not a substitute
 for real player movement or multiplayer validation.
 
 ## Backend audit
@@ -110,15 +119,20 @@ the entire official Java release; it replaces its nested native payload only.
 | Two simultaneous platforms in opposite distant regions | Passed after readiness gating; each traveled 13.900000 blocks with final drift 0.0 |
 | Support during acceleration, cruise, braking and stop | Checked every ten ticks; supported/unmounted assertions passed |
 | Jump/landing contact probe during cruise | Passed: upward impulse lifted probe >0.4 block, returned to the floor, final local drift 0.0 |
-| Unmounted mock-player staircase ascent during motion | Passed five walking waypoints and upper-landing height check |
-| Full candidate verification | 67 required GameTests passed (61 existing + six yacht tests), build and PAL checks passed |
+| Unmounted mock-player stairs in both directions during motion | Passed ascent and descent routes and landing-height checks |
+| Stationary dock → stationary vessel → dock | Passed; returned to dock at tick 312 |
+| Stationary dock → moving vessel → dock | Passed; returned at tick 316 and stayed at a fixed world position through tick 600 while the vessel continued |
+| Door aboard moving fixture | Closed door blocked approach; changing both halves to open admitted the unmounted player |
+| Dock placement and cleanup | Obstructed corridor rejected without replacing terrain or leaving a partial dock; successful fixture disposal removed the dock |
+| Full candidate verification | 72 required GameTests passed (61 existing + eleven yacht tests), build and PAL checks passed |
 
-These are server-side fixture tests. The armor stand probes are not players. The
-stair test applies movement to a mock player and checks collision; it does not
-exercise client inputs, prediction or network packets. The turn probe is a bounded
+These are server-side fixture tests. The armor stand probes are not players. The stair and dock tests apply horizontal velocity input and call one normal mock-player
+physics tick per step; they preserve vertical velocity/gravity and do not teleport
+between waypoints. Only initial test placement uses `setPos`. They do not exercise
+client inputs, prediction or network packets. The turn probe is a bounded
 physics test, not a destination navigation controller. Support checks cover about
-32 seconds, not ten-minute stability. The final candidate revision repeated the
-67-test pass with the same travel/drift results.
+32 seconds, not ten-minute stability. The earlier six-test candidate matrix passed repeatedly; the current expanded
+72-test run also passed.
 
 The contact measurements use the embedded plot center and `Pose3d.transformPosition`
 and its inverse, not the moving center of mass. Initial fixed-time startup produced
@@ -130,6 +144,23 @@ by taking a baseline after travel starts. Two-region motion overlaps, but begins
 independently when each probe settles. Test callbacks are registered in advance to
 avoid mutating Minecraft's pending-task map during iteration.
 
+### Transition-test corrections
+
+The first dock fixture overlapped the platform after its initialization offset;
+failed tests also left terrain in the old shared run directory. The corrected dock
+meets the settled vessel edge without overlapping it, restores/removes owned terrain
+on failure, and runs in the separate GameTest directory. A subsequent failure came
+from the test driver applying `player.tick()` **and** an extra `move()` each tick.
+That double movement disrupted the grounded state needed for step-up. The driver
+now performs one player physics tick per input. Both stair tests use the same
+corrected approach. No backend collision thresholds or player step height were
+relaxed to make these tests pass.
+
+A preliminary full-model partition audit found 6,639 occupied block cells and 360
+unique shape/material combinations (up to 13 pieces per cell). This is a feasibility
+measurement from the canonical exported scene, not a runtime import or performance
+result. The complete yacht is still not spawned by either review command.
+
 ## Client review status
 
 The f64 client launched and reached completed shader upload. The available desktop
@@ -138,7 +169,10 @@ control inventory did not expose the Java window and selecting `java` returned
 `/private/tmp/yacht-f64-client.log`. To review manually, use the isolated client
 command above, create a disposable creative world with cheats, find loaded empty
 12 × 8 × 32 air space, run `/yachtprototype spawn`, board, and run
-`/yachtprototype start`. This is the small test structure, not White Horizon.
+`/yachtprototype start`. Use `/yachtprototype dock` for the wider, dock-equipped
+setup described above. These are small test structures, not White Horizon. The
+desktop inventory was checked again during transition work and still exposed no
+Minecraft/Java app; no new in-world review was possible.
 
 ## Remaining release gates
 
@@ -160,7 +194,7 @@ registered. Canonical model/textures/exports and existing vehicle movement/camer
 were not changed by this investigation. Keep feature expansion behind the movement
 gate; no forced seats or passenger teleportation are substitutes.
 
-Local logs: `/private/tmp/yacht-f64-final-verify.log` records the final 67-test candidate pass;
+Local logs: `/private/tmp/yacht-transitions-final.log` records the final 72-test candidate pass;
 `/private/tmp/yacht-f64-final-build.log` records the locked native rebuild. These are
 local diagnostics, not shared source. The normal `./gradlew verifyProject --offline` also passed all 61 required tests
 (`/private/tmp/yacht-normal-final-verify.log`). The earlier unrelated grappling compile

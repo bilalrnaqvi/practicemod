@@ -252,7 +252,9 @@ if (project.hasProperty('yachtPrototype')) {
     }
     base.archivesName = "${mod_id}-yacht-prototype"
     sourceSets.main.java.srcDir 'src/yachtPrototype/java'
-    neoForge.runs.configureEach { gameDirectory = file('build/yacht/run') }
+    neoForge.runs.configureEach {
+        gameDirectory = file(name == 'gameTestServer' ? 'build/yacht/game-tests' : 'build/yacht/run')
+    }
     dependencies { implementation files(sableJar) }
     // Companion APIs live in the upstream nested jar; NeoForge loads it at runtime.
     def companion = layout.buildDirectory.file('yacht/sable-companion-1.6.0.jar').get().asFile

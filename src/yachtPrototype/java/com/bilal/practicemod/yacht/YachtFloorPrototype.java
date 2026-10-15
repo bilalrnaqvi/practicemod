@@ -29,6 +29,7 @@ public final class YachtFloorPrototype {
     private record Drive(double height, long startTick, boolean turn) {}
     public static int physicsSteps;
     private static final Map<ServerSubLevel, Drive> DRIVES = new IdentityHashMap<>();
+    private static final Map<ServerSubLevel, java.util.List<BlockPos>> DOCKS = new IdentityHashMap<>();
 
     public static ServerSubLevel spawn(ServerLevel level, double x, double y, double z) {
         return spawn(level,x,y,z,false);
@@ -66,6 +67,26 @@ public final class YachtFloorPrototype {
         sub.updateLastPose();
         container.addForceLoadTicket(sub, dev.ryanhcode.sable.api.sublevel.ticket.SubLevelLoadingTicketType.COMMAND_FORCED, net.minecraft.util.Unit.INSTANCE);
         DRIVES.put(sub, new Drive(y, level.getGameTime(), turn));
+        return sub;
+    }
+
+    /** Test-only static dock beside the bounded +Z corridor. All cells must be loaded air. */
+    public static ServerSubLevel spawnDockFixture(ServerLevel level, int x, int y, int z) {
+        for(var pos:BlockPos.betweenClosed(new BlockPos(x,y,z-2),new BlockPos(x+16,y+8,z+33))) {
+            if(!level.hasChunkAt(pos) || !level.getBlockState(pos).isAir())
+                throw new IllegalArgumentException("Dock review needs loaded empty space: 17 x 9 x 36 blocks.");
+        }
+        // Plot initialization shifts the settled origin by half a block. The dock
+        // ends at x+4, matching the settled vessel edge without hull overlap.
+        var sub=spawn(level,x+4.5,y,z);
+        hold(sub);
+        var positions=new java.util.ArrayList<BlockPos>();
+        DOCKS.put(sub,positions);
+        for(int dx=0;dx<4;dx++) for(int dz=-2;dz<=32;dz++) {
+            var pos=new BlockPos(x+dx,y,z+dz);
+            positions.add(pos);
+            level.setBlockAndUpdate(pos,Blocks.STONE.defaultBlockState());
+        }
         return sub;
     }
 
@@ -121,6 +142,12 @@ public final class YachtFloorPrototype {
     }
 
     public static void dispose(ServerSubLevel sub) {
+        var dock=DOCKS.remove(sub);
+        if(dock!=null) for(var pos:dock) {
+            // Do not erase a reviewer's replacement block during cleanup.
+            if(sub.getLevel().getBlockState(pos).is(Blocks.STONE))
+                sub.getLevel().setBlockAndUpdate(pos,Blocks.AIR.defaultBlockState());
+        }
         var container=SubLevelContainer.getContainer(sub.getLevel());
         container.removeForceLoadTicket(sub,
             dev.ryanhcode.sable.api.sublevel.ticket.SubLevelLoadingTicketType.COMMAND_FORCED,
@@ -153,6 +180,20 @@ public final class YachtFloorPrototype {
                 }
                 hold(spawn(level,p.x,p.y,p.z+3));
                 source.sendSuccess(() -> Component.literal("Disposable fixture held at +Z 3 blocks. Board, then /yachtprototype start. Creative test world only."),false);
+                return 1;
+            }))
+            .then(Commands.literal("dock").executes(ctx -> {
+                var source=ctx.getSource(); var level=source.getLevel();
+                if(DRIVES.keySet().stream().anyMatch(sub -> sub.getLevel()==level && !sub.isRemoved())) {
+                    source.sendFailure(Component.literal("One fixture per dimension. Restart this disposable world to clear it."));
+                    return 0;
+                }
+                var p=BlockPos.containing(source.getPosition());
+                try { spawnDockFixture(level,p.getX(),p.getY(),p.getZ()+3); }
+                catch(IllegalArgumentException failure) {
+                    source.sendFailure(Component.literal(failure.getMessage())); return 0;
+                }
+                source.sendSuccess(() -> Component.literal("Dock and held fixture ahead in +Z. Walk aboard, then /yachtprototype start. One trip only."),false);
                 return 1;
             }))
             .then(Commands.literal("start").executes(ctx -> {
