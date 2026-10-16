@@ -35,13 +35,13 @@ public final class YachtNavigation {
     public static final class Search {
         private record Node(int x,int z) {}
         private record Candidate(Node node,double score) {}
-        final ServerLevel level;final Vec3 origin;final int waterY;final Node goal;
+        final ServerLevel level;final Vec3 origin,destination;final int waterY;final Node goal;
         final PriorityQueue<Candidate> open=new PriorityQueue<>(Comparator.comparingDouble(Candidate::score));
         final Map<Node,Node> previous=new HashMap<>();final Map<Node,Double> costs=new HashMap<>();final Set<Node> closed=new HashSet<>();
         final Map<Long,Boolean> surveyed=new HashMap<>();
         public boolean done;public List<Vec3> result=List.of();
         public Search(ServerLevel level,Vec3 origin,int waterY,double x,double z) {
-            this.level=level;this.origin=origin;this.waterY=waterY;
+            this.level=level;this.origin=origin;this.waterY=waterY;this.destination=new Vec3(x,origin.y,z);
             goal=new Node((int)Math.round((x-origin.x)/STEP),(int)Math.round((z-origin.z)/STEP));
             var start=new Node(0,0);open.add(new Candidate(start,0));costs.put(start,0d);
         }
@@ -61,7 +61,17 @@ public final class YachtNavigation {
                 if(n.equals(goal)) {
                     var reverse=new ArrayList<Vec3>();
                     for(var at=n;previous.containsKey(at);at=previous.get(at))reverse.add(origin.add(at.x*STEP,0,at.z*STEP));
-                    Collections.reverse(reverse);result=reverse;done=true;return;
+                    Collections.reverse(reverse);
+                    // The search lattice is coarse; finish at the actual selected map point.
+                    // Survey the final short segment instead of silently rounding the destination.
+                    var end=reverse.isEmpty()?origin:reverse.getLast();
+                    int samples=Math.max(1,(int)Math.ceil(end.distanceTo(destination)));
+                    for(int sample=0;sample<=samples;sample++) {
+                        var p=end.lerp(destination,(double)sample/samples);
+                        if(!surveyedClear(p.x,p.z)){done=true;return;}
+                    }
+                    if(end.distanceToSqr(destination)>.0001)reverse.add(destination);
+                    result=reverse;done=true;return;
                 }
                 for(int[] d:new int[][]{{1,0},{-1,0},{0,1},{0,-1}}) {
                     var next=new Node(n.x+d[0],n.z+d[1]);

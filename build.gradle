@@ -249,18 +249,30 @@ if (project.hasProperty('yachtPrototype') || project.hasProperty('yacht')) {
     if (java.security.MessageDigest.getInstance('SHA-512').digest(sableJar.bytes).encodeHex().toString() != expected)
         throw new GradleException('Unrecognized Sable prototype artifact')
     if (project.hasProperty('yachtF64') || project.hasProperty('yacht')) {
-        if (System.getProperty('os.name') != 'Mac OS X' || System.getProperty('os.arch') != 'aarch64')
-            throw new GradleException('The experimental f64 candidate currently supports macOS arm64 only')
         def manifestFile = file('build/yacht/sable-f64-local.json')
         if (!manifestFile.exists()) throw new GradleException('Build/package the experimental f64 candidate first')
         def manifest = new groovy.json.JsonSlurper().parse(manifestFile)
-        if (manifest.base_sha512 != expected || manifest.platform != 'macos-arm64-only')
+        def os = System.getProperty('os.name').toLowerCase(Locale.ROOT)
+        def arch = System.getProperty('os.arch').toLowerCase(Locale.ROOT)
+        def family = os.contains('mac') ? 'macos' : os.contains('win') ? 'windows' : os.contains('linux') ? 'linux' : 'unsupported'
+        def cpu = ['aarch64', 'arm64'].contains(arch) ? 'arm64' : ['amd64', 'x86_64'].contains(arch) ? 'x64' : 'unsupported'
+        def platform = "${family}-${cpu}".toString()
+        def patchHash = java.security.MessageDigest.getInstance('SHA-512').digest(file('tools/yacht/native/sable-f64.patch').bytes).encodeHex().toString()
+        if (manifest.schema != 2 || manifest.precision != 'f64' || manifest.base_sha512 != expected || manifest.patch_sha512 != patchHash)
             throw new GradleException('Invalid f64 candidate provenance')
+        if (!manifest.natives.containsKey(platform))
+            throw new GradleException("Yacht physics native missing for ${platform}; rebuild/package that target with tools/yacht/build_sable_f64.py")
         sableJar = file('build/yacht/sable-2.0.6-yacht-f64.jar')
         if (java.security.MessageDigest.getInstance('SHA-512').digest(sableJar.bytes).encodeHex().toString() != manifest.sha512)
             throw new GradleException('Experimental f64 candidate hash mismatch')
     }
     def yachtTestLog = file('build/yacht/game-tests/logs/latest.log')
+    tasks.named('runGameTestServer').configure {
+        doFirst {
+            if (yachtTestLog.exists() && !yachtTestLog.delete())
+                throw new GradleException('Cannot clear stale yacht GameTest results')
+        }
+    }
     tasks.named('verifyProject').configure {
         doLast {
             if (!yachtTestLog.exists() || !(yachtTestLog.text =~ /All \d+ required tests passed/).find())
@@ -291,4 +303,42 @@ if (project.hasProperty('yachtPrototype') || project.hasProperty('yacht')) {
         companion.bytes = zip.getInputStream(zip.getEntry('META-INF/jarjar/sable-companion-common-1.21.1-1.6.0.jar')).bytes
     } finally { zip.close() }
     dependencies { compileOnly files(companion) }
+    if (project.hasProperty('yacht')) {
+        tasks.register('yachtDistribution', Zip) {
+            group = 'distribution'
+            description = 'Bundle the yacht mod, all six physics natives, provenance, and usage instructions.'
+            dependsOn tasks.named('jar')
+            archiveBaseName = "${mod_id}-yacht"
+            destinationDirectory = layout.buildDirectory.dir('distributions')
+            from(tasks.named('jar')) { into 'mods' }
+            from('build/yacht/sable-2.0.6-yacht-f64.jar') { into 'mods' }
+            from('build/yacht/sable-f64-local.json')
+            from('tools/yacht/native/LICENSE-SABLE.md')
+            from('tools/yacht/native/sable-f64.patch')
+            from('docs/yacht/WHITE_HORIZON_RUNTIME.md')
+            doFirst {
+                def manifest = new groovy.json.JsonSlurper().parse(file('build/yacht/sable-f64-local.json'))
+                if (!manifest.natives.keySet().containsAll(['macos-arm64','macos-x64','linux-arm64','linux-x64','windows-arm64','windows-x64']))
+                    throw new GradleException('Distribution requires all six f64 natives; partial native packages are development-only.')
+            }
+        }
+        tasks.register('prepareYachtMultiplayerReview') {
+            group = 'verification'
+            description = 'Prepare launch descriptions for the isolated two-client review (use --no-configuration-cache).'
+            dependsOn tasks.named('classes'), tasks.named('prepareClientRun'), tasks.named('prepareServerRun')
+            doLast {
+                def launches = [:]
+                ['client', 'server'].each { role ->
+                    def run = tasks.named('run' + role.capitalize()).get()
+                    launches[role] = [java: run.javaLauncher.get().executablePath.asFile.absolutePath,
+                        jvm: run.allJvmArgs + run.jvmArgumentProviders.collectMany { it.asArguments().toList() },
+                        classpath: run.classpathProvider.asPath,
+                        main: run.mainClass.orNull,
+                        args: run.args + run.argumentProviders.collectMany { it.asArguments().toList() },
+                        environment: run.environmentProperty.get()]
+                }
+                file('build/yacht/multiplayer-launch.json').text = groovy.json.JsonOutput.prettyPrint(groovy.json.JsonOutput.toJson(launches))
+            }
+        }
+    }
 }

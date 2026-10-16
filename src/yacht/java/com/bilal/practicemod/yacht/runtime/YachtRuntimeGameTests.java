@@ -79,6 +79,9 @@ public final class YachtRuntimeGameTests {
         for(int i=0;i<130 && !search.done;i++)search.tick();
         h.assertTrue(search.done && !search.result.isEmpty(),"Deep water route not found");
         h.assertTrue(search.result.getLast().distanceTo(new Vec3(640,100,648))<.01,"Wrong destination");
+        var exact=new YachtNavigation.Search(level,new Vec3(640,100,640),95,643,650);
+        for(int i=0;i<130 && !exact.done;i++)exact.tick();
+        h.assertTrue(exact.done && !exact.result.isEmpty() && exact.result.getLast().distanceTo(new Vec3(643,100,650))<.01,"Selected destination was rounded to the search grid");
         level.setBlock(new net.minecraft.core.BlockPos(640,95,665),net.minecraft.world.level.block.Blocks.STONE.defaultBlockState(),2);
         h.assertTrue(!YachtNavigation.clear(level,640,648,95),"New obstacle accepted by live survey");h.succeed();
     }
