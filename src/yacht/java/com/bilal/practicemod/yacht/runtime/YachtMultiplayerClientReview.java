@@ -16,7 +16,7 @@ import java.util.*;
 /** Real client input and packets; the shared file coordinates the test, never player motion. */
 @EventBusSubscriber(modid="practicemod",value=Dist.CLIENT)
 public final class YachtMultiplayerClientReview {
-    static int ticks,target,jumpTicks;static boolean interacted,requested,done;static double maxStep,maxJump;static Vec3 previous;
+    static int ticks,target,jumpTicks,seenPlayers;static boolean interacted,requested,done,boarded;static double maxStep,maxJump;static Vec3 previous;
     static final List<Vec3> path=new ArrayList<>();static String capture;
     @SubscribeEvent public static void tick(ClientTickEvent.Post event) {
         String output=System.getProperty("practicemod.yachtMultiplayerReview");var mc=Minecraft.getInstance();
@@ -31,8 +31,19 @@ public final class YachtMultiplayerClientReview {
         String name=mc.player.getName().getString();boolean owner=name.equals("YachtOwner");var center=ship.getPlot().getCenterBlock();
         var local=ship.logicalPose().transformPositionInverse(mc.player.position()).subtract(center.getX(),center.getY(),center.getZ());
         if(ticks<100)return;
+        seenPlayers=Math.max(seenPlayers,mc.level.players().size()-1);
         if(Boolean.getBoolean("practicemod.yachtReviewReconnect")) {
             if(ticks==160)YachtMultiplayerReview.write(Path.of(output,name+"-reconnected.json"),"{\"local\":\""+local+"\",\"otherPlayers\":"+(mc.level.players().size()-1)+"}");
+            if(state.has("boarding") && state.get("boarding").getAsBoolean()) {
+                if(!boarded && local.y>=-2.1 && local.z> -29.2 && local.z< -28) {
+                    boarded=true;capture=name+"-boarded";YachtMultiplayerReview.write(Path.of(output,name+"-boarded.json"),"{\"local\":\""+local+"\"}");
+                }
+                var direction=ship.logicalPose().transformNormal(new Vec3(0,0,boarded?-1:1));mc.player.setYRot((float)Math.toDegrees(Math.atan2(-direction.x,direction.z)));mc.player.setXRot(0);
+                mc.options.keyUp.setDown(true);mc.options.keyJump.setDown(!boarded);
+                if(boarded && local.z< -32 && local.y< -4.5) {
+                    mc.options.keyUp.setDown(false);capture=name+"-disembarked";YachtMultiplayerReview.write(Path.of(output,name+"-disembarked.json"),"{\"local\":\""+local+"\",\"water\":"+mc.player.isInWater()+"}");
+                }
+            }
             return;
         }
         if(previous!=null)maxStep=Math.max(maxStep,local.distanceTo(previous));previous=local;
@@ -50,7 +61,7 @@ public final class YachtMultiplayerClientReview {
         }
         if((owner && state.get("movingTicks").getAsInt()>100) || (!owner && done)) {
             jumpTicks++;mc.options.keyJump.setDown(jumpTicks<=2);maxJump=Math.max(maxJump,local.y-4);
-            if(jumpTicks==60){capture=name+"-landing";YachtMultiplayerReview.write(Path.of(output,name+"-done.json"),"{\"stairComplete\":"+done+",\"maxJump\":"+maxJump+",\"maxLocalStep\":"+maxStep+",\"local\":\""+local+"\",\"otherPlayers\":"+(mc.level.players().size()-1)+"}");}
+            if(jumpTicks==60){capture=name+"-landing";YachtMultiplayerReview.write(Path.of(output,name+"-done.json"),"{\"stairComplete\":"+done+",\"maxJump\":"+maxJump+",\"maxLocalStep\":"+maxStep+",\"local\":\""+local+"\",\"otherPlayers\":"+seenPlayers+"}");}
         }
         if(ticks%20==0)YachtMultiplayerReview.write(Path.of(output,name+"-latest.json"),"{\"ticks\":"+ticks+",\"local\":\""+local+"\",\"maxLocalStep\":"+maxStep+",\"waypoint\":"+target+",\"otherPlayers\":"+(mc.level.players().size()-1)+"}");
         if(Files.exists(Path.of(output,"server-result.json"))){mc.options.keyUp.setDown(false);mc.options.keyJump.setDown(false);if(ticks%40==0)mc.stop();}

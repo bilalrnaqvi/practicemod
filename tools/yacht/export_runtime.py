@@ -101,11 +101,14 @@ for es in palette:
    if e['category']=='rails':
     a=e['from'][:];b=e['to'][:]
     a[1]=0;b[1]=max(16,b[1]);boxes.append(a+b)
- shapes.append({'ladder':any(e['ladder'] for e in es),'boxes':boxes,'water':any(e['material']=='water' for e in es),'light':15 if any(e['material']=='lamp' for e in es) else 0})
+ shapes.append({'ladder':any(e['ladder'] for e in es),'ladders':[e['from']+e['to'] for e in es if e['ladder']],'boxes':boxes,'water':any(e['material']=='water' for e in es),'light':15 if any(e['material']=='lamp' for e in es) else 0})
 write(out/'white_horizon_runtime.json',{'source_sha256':hashlib.sha256(source.read_bytes()).hexdigest(),'palette':shapes,'cells':positions,'doors':doors,'layout':m['practicemod']['layout']})
+# Sable checks this tag before NeoForge's per-state isLadder hook. Non-ladder
+# palette states still return false, so tagging the shared block cannot climb walls.
+write(out/'data/minecraft/tags/block/climbable.json',{'replace':False,'values':['practicemod:white_horizon_cell']})
 print(f'White Horizon: {len(positions)} cells, {len(palette)} render variants, canonical geometry preserved')
 
 # The captain controller holds the design waterline; avoid a second buoyancy controller.
 write(out/'data/practicemod/physics_block_properties/white_horizon.json',{'selector':'practicemod:white_horizon_cell','properties':{'sable:volume':0.0}})
 
-write(out/'practicemod.yacht.mixins.json',{'required':True,'minVersion':'0.8','package':'com.bilal.practicemod.yacht.runtime.mixin','compatibilityLevel':'JAVA_21','client':['YachtLiquidRendererMixin'],'injectors':{'defaultRequire':1}})
+write(out/'practicemod.yacht.mixins.json',{'required':True,'minVersion':'0.8','package':'com.bilal.practicemod.yacht.runtime.mixin','compatibilityLevel':'JAVA_21','mixins':['YachtLadderMixin'],'client':['YachtLiquidRendererMixin'],'injectors':{'defaultRequire':1}})

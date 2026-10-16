@@ -4,15 +4,20 @@ White Horizon now has a full-size Sable-backed runtime in `src/yacht/java`, enab
 with **`-Pyacht`**. The canonical model is unchanged: the runtime exporter partitions
 its cuboids into 6,639 native block cells, with separate solid/translucent materials,
 shape collision, climbable swim ladders, light-emitting fixtures and door variants.
-This is a macOS arm64 development candidate, not a cross-platform release. The
-native f64 dependency and real multiplayer validation remain release limitations.
+The native package now contains Windows, Linux and macOS libraries for both x64
+and ARM64. A dedicated-server test with two actual Mac clients has passed moving
+stairs, jumping and captain travel. Native-host CI and reconnect validation are
+tracked in [platform verification](CROSS_PLATFORM.md); packaging alone is not a
+claim that every operating system has passed gameplay tests.
 
 ## Build and use
 
 Target: Minecraft 1.21.1, NeoForge 21.1.235, Java 21. The ordinary build excludes the
 yacht and Sable. Both client and server need the yacht build and the same patched
 Sable dependency; Sable is not shaded into the mod. The profile checks the locally
-built artifact against `build/yacht/sable-f64-local.json` and its upstream lock.
+built artifact against `build/yacht/sable-f64-local.json`, the source patch and its
+upstream lock. `./gradlew yachtDistribution -Pyacht` creates a portable ZIP containing
+both required JARs; it refuses a package missing any of the six native libraries.
 See the [archived dependency investigation](../history/WHITE_HORIZON_RUNTIME-prototype.md)
 for pinned source revisions, native build commands and the official f32 failure.
 
@@ -88,10 +93,10 @@ entity bounding box. This has not been benchmarked for a 16-player party.
 ## Validation and review
 
 - Canonical static geometry: 3,707 clearance samples across 54 routes pass.
-- `./gradlew verifyProject --offline -Pyacht`: **65 required tests passed**.
+- `./gradlew verifyProject --offline -Pyacht`: **66 required tests passed**.
   The normal profile separately passed **61 required tests**.
 - Full-runtime GameTests exercise complete-hull player contact, moving authored
-  stairs, deep-water route survey, changed terrain rejection, ladder export and
+  stairs, deep-water route survey, changed terrain rejection, moving full-hull swim-ladder boarding and
   ownership serialization, in addition to the existing mod tests.
 - The bounded prototype separately covers jumping, doorways, docks, water/ladder
   transitions, dry rooms, distant coordinates and a simulated ten-minute soak.
@@ -115,11 +120,12 @@ also opened the service locker and toggled a guest cabin door. Review output is 
 after the initial disposable-world run. Automated startup failures now fail the yacht
 verification task even if Minecraft itself exits with a misleading zero code.
 
-Remaining release validation: two real clients with latency/correction telemetry,
-full voyage/reconnect and crash-recovery tests, Linux/Windows native builds, manual
-moving swim/dock/jump tests on the final hull, and performance under party load.
-Server probes and one integrated client do not establish reliable multiplayer.
-The patched native runtime remains explicitly opt-in pending that validation.
+The two-client dedicated-server voyage passed with added TCP latency, moving
+stairs, jumping/landing and mutual player replication. See the platform report for
+precise measurements and subsequent UDP/reconnect and native-host CI results.
+Remaining validation includes crash recovery, final-hull swim/dock transitions,
+and performance under party load. The native runtime remains an explicit yacht
+build profile; ordinary builds retain the existing dependency footprint.
 
 Existing saved vessels are not automatically migrated after a canonical model/palette revision; such revisions require a deliberate migration before deployment.
 

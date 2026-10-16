@@ -9,6 +9,26 @@ import java.util.UUID;
 @GameTestHolder("practicemod")
 @PrefixGameTestTemplate(false)
 public final class YachtRuntimeGameTests {
+    @GameTest(template="empty",batch="white_horizon_boarding",timeoutTicks=500)
+    public void swimLadderBoardsMovingCanonicalHull(GameTestHelper h) {
+        var level=h.getLevel();
+        for(int x=1260;x<=1340;x++)for(int z=1250;z<=1370;z++)for(int y=174;y<180;y++)
+            level.setBlock(new net.minecraft.core.BlockPos(x,y,z),net.minecraft.world.level.block.Blocks.WATER.defaultBlockState(),2);
+        var c=YachtRuntime.assemble(level,UUID.randomUUID(),"Boarding test",new Vec3(1300,185,1300),180);
+        var player=h.makeMockPlayer(GameType.SURVIVAL);player.setInvulnerable(true);double[] highest={-20};boolean[] climbed={false};
+        h.runAfterDelay(80,()->player.setPos(YachtRuntime.point(c.ship,-1.5,-4.5,-30.4)));
+        for(int t=81;t<=380;t++)h.runAfterDelay(t,()->{
+            c.speed=.3;c.velocity=new Vec3(0,0,.3);
+            var local=YachtRuntime.local(c.ship,player.position());
+            if(local.z< -28.8){var motion=c.ship.logicalPose().transformNormal(new Vec3(0,0,.08));player.setDeltaMovement(motion.x,player.getDeltaMovement().y,motion.z);player.setJumping(true);}
+            else {player.setDeltaMovement(0,player.getDeltaMovement().y,0);player.setJumping(false);}
+            player.tick();highest[0]=Math.max(highest[0],local.y);climbed[0]|=player.onClimbable();
+        });
+        h.runAfterDelay(381,()->{try{
+            var local=YachtRuntime.local(c.ship,player.position());
+            h.assertTrue(climbed[0] && local.y>=-2.15 && local.z> -29.7,"Moving swim ladder failed: local="+local+", highest="+highest[0]+", climbed="+climbed[0]);h.succeed();
+        }finally{player.discard();YachtRuntime.dispose(c.ship);}});
+    }
     @GameTest(template="empty",batch="white_horizon_full",timeoutTicks=500)
     public void fullCanonicalHullSupportsGuestAndBridgeAtCruise(GameTestHelper h) {
         for(int x=4;x<=9;x++)for(int z=4;z<=10;z++)h.getLevel().getChunk(x,z);

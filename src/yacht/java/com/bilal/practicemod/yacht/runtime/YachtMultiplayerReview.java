@@ -13,7 +13,7 @@ import java.nio.file.*;
 @EventBusSubscriber(modid="practicemod")
 public final class YachtMultiplayerReview {
     static YachtRuntime.Controller yacht;
-    static int ticks, movingTicks, arrivals;
+    static int ticks, movingTicks, arrivals,boardingTick;
     static boolean finished;
     static long started;
     @SubscribeEvent public static void tick(ServerTickEvent.Post event) {
@@ -37,6 +37,7 @@ public final class YachtMultiplayerReview {
         if(ticks%20==0) {
             var data=new JsonObject();data.addProperty("ticks",ticks);data.addProperty("ship",yacht.ship.getUniqueId().toString());data.addProperty("status",yacht.status);
             data.addProperty("movingTicks",movingTicks);data.addProperty("captain",yacht.data.getUUID("captain").toString());
+            data.addProperty("boarding",boardingTick>0);
             data.addProperty("destinationX",1000);data.addProperty("destinationZ",1016);
             data.addProperty("owner",owner==null?"disconnected":YachtRuntime.local(yacht.ship,owner.position()).toString());
             data.addProperty("guest",guest==null?"disconnected":YachtRuntime.local(yacht.ship,guest.position()).toString());
@@ -44,9 +45,14 @@ public final class YachtMultiplayerReview {
         }
         if(yacht.status.equals("ARRIVED"))arrivals++;
         boolean reconnectReady=!Boolean.getBoolean("practicemod.yachtReviewRequireReconnect") || Files.exists(Path.of(output,"YachtGuest-reconnected.json"));
-        if(arrivals>100 && owner!=null && guest!=null && reconnectReady && Files.exists(Path.of(output,"YachtGuest-done.json"))) {
+        if(arrivals>100 && guest!=null && reconnectReady && boardingTick==0) {
+            // A second bounded scenario starts in the water. All subsequent motion is client input.
+            place(guest,-1.5,-4.5,-30.4);boardingTick=ticks;
+            yacht.route=new java.util.ArrayList<>(java.util.List.of(YachtRuntime.point(yacht.ship,0,0,8)));yacht.status="SAILING — boarding review";
+        }
+        if(boardingTick>0 && owner!=null && guest!=null && Files.exists(Path.of(output,"YachtGuest-disembarked.json"))) {
             var o=YachtRuntime.local(yacht.ship,owner.position());var g=YachtRuntime.local(yacht.ship,guest.position());
-            boolean valid=movingTicks>200 && Math.abs(o.y-4)<.2 && Math.abs(g.y-4)<.2 && owner.getVehicle()==null && guest.getVehicle()==null;
+            boolean valid=movingTicks>200 && Math.abs(o.y-4)<.2 && g.y< -4.5 && g.z< -31 && guest.isInWater() && yacht.speed<.01 && owner.getVehicle()==null && guest.getVehicle()==null;
             write(Path.of(output,"server-result.json"),"{\"passed\":"+valid+",\"movingTicks\":"+movingTicks+",\"status\":\""+yacht.status+"\",\"ownerLocal\":\""+o+"\",\"guestLocal\":\""+g+"\"}");
             finished=true;
         }

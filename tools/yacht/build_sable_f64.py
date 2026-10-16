@@ -19,6 +19,10 @@ else:
     if revision != COMMIT: raise SystemExit('Source revision differs from the pinned Sable commit')
     # Reuse only an already-patched tree; never reset or overwrite source edits.
     run('git','apply','--reverse','--check',str(root/'tools/yacht/native/sable-f64.patch'),cwd=work)
+actual = subprocess.check_output(['git','diff','--binary','HEAD'],cwd=work,text=True)
+expected = (root/'tools/yacht/native/sable-f64.patch').read_text()
+if actual.splitlines() != expected.splitlines():
+    raise SystemExit('Source has changes beyond the canonical precision patch; refusing misleading provenance')
 manifest = work/'sable_rapier/src/main/rust/Cargo.toml'
 for name in args.platform:
     triple, filename, _ = PLATFORMS[name]

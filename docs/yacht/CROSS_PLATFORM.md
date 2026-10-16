@@ -65,7 +65,12 @@ check, not an exact count of server corrections. Two clients do not establish a
 
 ## Recorded local results
 
-- Intel Mac native compiled successfully with the pinned Rust toolchain.
+- All six native libraries compiled successfully and were packaged together. The
+  package passed local Minecraft verification (66 required tests), including
+  boarding the moving full-size hull from water. Boundary-mounted ladder contact
+  uses the authored rung/rail boxes; normal vanilla climbing supplies motion.
+- Native-host CI is running at
+  https://github.com/bilalrnaqvi/practicemod/actions/runs/38982624977.
 - Two actual Mac ARM64 clients and a dedicated server passed a TCP-fallback voyage
   with 50 ms proxy delay each way: captain arrival, guest main-to-upper stair,
   independent jumps/landings, no mounted seats, and mutual player replication.
