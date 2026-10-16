@@ -26,10 +26,11 @@ import java.util.Map;
 /** Disposable test-world fixture. No yacht ownership, navigation, or passenger teleporting. */
 @EventBusSubscriber(modid = PracticeMod.MODID)
 public final class YachtFloorPrototype {
-    private record Drive(double height, long startTick, boolean turn) {}
+    private record Drive(double height, long startTick, boolean turn, boolean soak) {}
     public static int physicsSteps;
     private static final Map<ServerSubLevel, Drive> DRIVES = new IdentityHashMap<>();
     private static final Map<ServerSubLevel, java.util.List<BlockPos>> DOCKS = new IdentityHashMap<>();
+    private static final Map<ServerSubLevel, java.util.List<dev.ryanhcode.sable.sublevel.water_occlusion.WaterOcclusionRegion>> DRY_REGIONS = new IdentityHashMap<>();
 
     public static ServerSubLevel spawn(ServerLevel level, double x, double y, double z) {
         return spawn(level,x,y,z,false);
@@ -66,7 +67,7 @@ public final class YachtFloorPrototype {
         blocks.setBlock(new BlockPos(9,1,4),Blocks.OAK_STAIRS.defaultBlockState(),3);
         sub.updateLastPose();
         container.addForceLoadTicket(sub, dev.ryanhcode.sable.api.sublevel.ticket.SubLevelLoadingTicketType.COMMAND_FORCED, net.minecraft.util.Unit.INSTANCE);
-        DRIVES.put(sub, new Drive(y, level.getGameTime(), turn));
+        DRIVES.put(sub, new Drive(y, level.getGameTime(), turn, false));
         return sub;
     }
 
@@ -93,12 +94,42 @@ public final class YachtFloorPrototype {
     /** Hold a fixture until its contact probes are ready; no pose changes. */
     public static void hold(ServerSubLevel sub) {
         var drive=DRIVES.get(sub);
-        DRIVES.put(sub,new Drive(drive.height(),Long.MAX_VALUE,drive.turn()));
+        DRIVES.put(sub,new Drive(drive.height(),Long.MAX_VALUE,drive.turn(),drive.soak()));
     }
 
     public static void start(ServerSubLevel sub) {
         var drive=DRIVES.get(sub);
-        DRIVES.put(sub,new Drive(drive.height(),sub.getLevel().getGameTime(),drive.turn()));
+        DRIVES.put(sub,new Drive(drive.height(),sub.getLevel().getGameTime(),drive.turn(),false));
+    }
+
+    /** Automated soak only: smooth reversals within the preloaded test corridor. */
+    public static void startSoak(ServerSubLevel sub) {
+        var drive=DRIVES.get(sub);
+        DRIVES.put(sub,new Drive(drive.height(),sub.getLevel().getGameTime(),false,true));
+    }
+
+    public static void addPool(ServerSubLevel sub) {
+        var blocks=sub.getPlot().getEmbeddedLevelAccessor();
+        for(int x=6;x<=10;x++) for(int z=4;z<=8;z++) {
+            blocks.setBlock(new BlockPos(x,4,z),Blocks.AIR.defaultBlockState(),3);
+            blocks.setBlock(new BlockPos(x,5,z),Blocks.AIR.defaultBlockState(),3);
+            boolean rim=x==6 || x==10 || z==4 || z==8;
+            blocks.setBlock(new BlockPos(x,1,z),(rim?Blocks.QUARTZ_BLOCK:Blocks.WATER).defaultBlockState(),3);
+        }
+        blocks.setBlock(new BlockPos(7,1,3),Blocks.QUARTZ_SLAB.defaultBlockState(),3);
+        blocks.setBlock(new BlockPos(7,1,5),Blocks.QUARTZ_SLAB.defaultBlockState()
+                .setValue(SlabBlock.WATERLOGGED,true),3);
+    }
+
+    /** Server-side research only. Sable does not replicate these volumes to clients. */
+    public static void addDryRegion(ServerSubLevel sub, BlockPos min, BlockPos max) {
+        var container=dev.ryanhcode.sable.sublevel.water_occlusion.WaterOcclusionContainer.getContainer(sub.getLevel());
+        if(container==null) throw new IllegalStateException("Water occlusion container unavailable");
+        var center=sub.getPlot().getCenterBlock();
+        var a=center.offset(min); var b=center.offset(max);
+        var volume=new dev.ryanhcode.sable.util.BoundedBitVolume3i(a.getX(),a.getY(),a.getZ(),b.getX(),b.getY(),b.getZ());
+        for(var pos:BlockPos.betweenClosed(a,b)) volume.setOccupied(pos.getX(),pos.getY(),pos.getZ(),true);
+        DRY_REGIONS.computeIfAbsent(sub,key->new java.util.ArrayList<>()).add(container.addRegion(volume));
     }
 
     private static void step(net.minecraft.world.level.CommonLevelAccessor world,int x,double top,int z) {
@@ -122,6 +153,7 @@ public final class YachtFloorPrototype {
             double seconds=drive.startTick()==Long.MAX_VALUE?0:(level.getGameTime()-drive.startTick())/20.0;
             // 2 s settling, bounded acceleration to .8 m/s, cruise, brake, hold.
             double speed=seconds<2?0:seconds<10?(seconds-2)*.1:seconds<20?.8:Math.max(0,.8-(seconds-20)*.1);
+            if(drive.soak()) speed=seconds>=600?0:.8*Math.sin(seconds*Math.PI/20);
             var p=sub.logicalPose().position();
             var velocity=handle.getLinearVelocity(new Vector3d());
             var gravity=DimensionPhysicsData.getGravity(level,p);
@@ -142,6 +174,11 @@ public final class YachtFloorPrototype {
     }
 
     public static void dispose(ServerSubLevel sub) {
+        var dry=DRY_REGIONS.remove(sub);
+        if(dry!=null) {
+            var masks=dev.ryanhcode.sable.sublevel.water_occlusion.WaterOcclusionContainer.getContainer(sub.getLevel());
+            if(masks!=null) dry.forEach(masks::removeRegion);
+        }
         var dock=DOCKS.remove(sub);
         if(dock!=null) for(var pos:dock) {
             // Do not erase a reviewer's replacement block during cleanup.
@@ -194,6 +231,17 @@ public final class YachtFloorPrototype {
                     source.sendFailure(Component.literal(failure.getMessage())); return 0;
                 }
                 source.sendSuccess(() -> Component.literal("Dock and held fixture ahead in +Z. Walk aboard, then /yachtprototype start. One trip only."),false);
+                return 1;
+            }))
+            .then(Commands.literal("pool").executes(ctx -> {
+                var fixtures=DRIVES.keySet().stream()
+                        .filter(sub -> sub.getLevel()==ctx.getSource().getLevel() && !sub.isRemoved()).toList();
+                if(fixtures.size()!=1 || DRIVES.get(fixtures.getFirst()).startTick()!=Long.MAX_VALUE) {
+                    ctx.getSource().sendFailure(Component.literal("Spawn a held fixture first; add the pool before starting motion."));
+                    return 0;
+                }
+                addPool(fixtures.getFirst());
+                ctx.getSource().sendSuccess(() -> Component.literal("Added a 3 x 3 contained pool with entry/exit steps; removed its overhead floor for headroom."),false);
                 return 1;
             }))
             .then(Commands.literal("start").executes(ctx -> {

@@ -41,9 +41,13 @@ use `/yachtprototype start` to run the bounded trip. It is an air-space fixture,
 not a water-qualified acquisition flow. Do not reuse manual worlds from failed
 older experiments as clean measurement baselines.
 
-The fixture remains smaller than the planned complete prototype: pool/water, gate,
-player-input/packet telemetry and real-client boundary checks remain. Door changes
-and dock transitions are now covered by server-side tests. An armor stand is an initial contact probe, not a substitute
+Before starting a held fixture, `/yachtprototype pool` adds the 3 × 3 contained
+pool and entry/exit steps. Its overhead floor is removed for headroom. This modifies
+only the disposable test fixture, not the canonical yacht. Pool entry/exit, exterior
+water/ladder transitions and a submerged dry room now have server-side tests.
+The fixture still lacks the complete gate and player-input/packet telemetry;
+real-client boundary checks remain. Door changes and dock transitions are covered
+by server-side tests. An armor stand is an initial contact probe, not a substitute
 for real player movement or multiplayer validation.
 
 ## Backend audit
@@ -124,15 +128,20 @@ the entire official Java release; it replaces its nested native payload only.
 | Stationary dock → moving vessel → dock | Passed; returned at tick 316 and stayed at a fixed world position through tick 600 while the vessel continued |
 | Door aboard moving fixture | Closed door blocked approach; changing both halves to open admitted the unmounted player |
 | Dock placement and cleanup | Obstructed corridor rejected without replacing terrain or leaving a partial dock; successful fixture disposal removed the dock |
-| Full candidate verification | 72 required GameTests passed (61 existing + eleven yacht tests), build and PAL checks passed |
+| Moving 3 × 3 pool entry/exit | Passed; 55 ticks of water detection, return through the steps to dry supported deck space |
+| Vessel → outside water → moving ladder → vessel | Passed; 47 wet ticks, 27 climbable ticks, dry supported return without mounting |
+| Ten-minute simulated contact soak at million-block coordinates | Passed 12,000 ticks with repeated smooth reversals, 305.575923 blocks accumulated travel, final local drift 0.0; sampled support/drift every ten ticks |
+| Submerged enclosed room | Passed dry body/eye state, full air supply, supported unmounted occupant, active outside water, and dry-mask disposal |
+| Full candidate verification | 76 required GameTests passed (61 existing + fifteen yacht tests), build and PAL checks passed |
 
 These are server-side fixture tests. The armor stand probes are not players. The stair and dock tests apply horizontal velocity input and call one normal mock-player
 physics tick per step; they preserve vertical velocity/gravity and do not teleport
 between waypoints. Only initial test placement uses `setPos`. They do not exercise
 client inputs, prediction or network packets. The turn probe is a bounded
-physics test, not a destination navigation controller. Support checks cover about
-32 seconds, not ten-minute stability. The earlier six-test candidate matrix passed repeatedly; the current expanded
-72-test run also passed.
+physics test, not a destination navigation controller. The short-trip checks cover about 32 seconds. The soak covers ten minutes of
+**simulated** game time with repeated reversals in the same loaded corridor, not
+ten minutes of wall time or uninterrupted long-distance navigation. GameTests run
+faster than real time. No client prediction or packet delivery is involved.
 
 The contact measurements use the embedded plot center and `Pose3d.transformPosition`
 and its inverse, not the moving center of mass. Initial fixed-time startup produced
@@ -160,6 +169,23 @@ A preliminary full-model partition audit found 6,639 occupied block cells and 36
 unique shape/material combinations (up to 13 pieces per cell). This is a feasibility
 measurement from the canonical exported scene, not a runtime import or performance
 result. The complete yacht is still not spawned by either review command.
+
+### Dry rooms and water synchronization
+
+The pinned Sable source exposes `WaterOcclusionContainer` and `BoundedBitVolume3i`.
+The prototype creates a bounded vessel-local air region using embedded plot
+coordinates; Sable transforms it with the vessel during fluid queries. The test
+registers the mask explicitly—enclosing blocks alone are not being claimed to
+create a dry interior. Pool and exterior-water tests run without this air mask.
+
+Upstream `WaterOcclusionContainer` explicitly states that regions are **not
+networked**. Full integration must publish authoritative dry-volume definitions to
+clients on spawn/tracking/rejoin and dimension changes, remove them on unload, and
+recreate them on save/load. Client masks must agree with server masks, exclude the
+pool, and cover the authored dry-room cells rather than the whole hull envelope.
+Camera/fog/water-render suppression needs in-world review. This checkpoint implements
+and tests server-side registration and cleanup only; it does not implement that
+network protocol or claim multiplayer water exclusion.
 
 ## Client review status
 
@@ -194,8 +220,8 @@ registered. Canonical model/textures/exports and existing vehicle movement/camer
 were not changed by this investigation. Keep feature expansion behind the movement
 gate; no forced seats or passenger teleportation are substitutes.
 
-Local logs: `/private/tmp/yacht-transitions-final.log` records the final 72-test candidate pass;
+Local logs: `/private/tmp/yacht-dry-room.log` records the final 76-test candidate pass;
 `/private/tmp/yacht-f64-final-build.log` records the locked native rebuild. These are
 local diagnostics, not shared source. The normal `./gradlew verifyProject --offline` also passed all 61 required tests
-(`/private/tmp/yacht-normal-final-verify.log`). The earlier unrelated grappling compile
+(`/private/tmp/yacht-water-normal.log`). The earlier unrelated grappling compile
 failure has been resolved by concurrent work; it no longer blocks this prototype.

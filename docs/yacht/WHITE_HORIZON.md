@@ -255,6 +255,11 @@ player's look direction whenever the hull turns.
 - Remote observers need consistent occupants, doors and captain transforms. Test
   late join, tracking range entry/exit, hull chunk crossing, two ships nearby and
   owner logout. A seated emote may use a local seat attachment only while seated.
+- Sable's inspected water-occlusion regions are not networked automatically.
+  The server-side prototype now tests moving dry rooms, normal breathing and mask
+  cleanup; full integration must replicate authored dry-volume definitions to clients
+  on tracking/rejoin/dimension changes and remove/rebuild them through unload/save/load.
+  See the [runtime investigation](WHITE_HORIZON_RUNTIME.md); no client water pass is claimed.
 - Dry-room volumes and pool-water volumes are distinct. Verify breathing, swimming,
   fog and world-ocean rendering at hull intersections for **every** occupant, including
   observers. The existing pilot-only submarine water mixins are insufficient.
