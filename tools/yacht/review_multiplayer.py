@@ -1,13 +1,26 @@
 """Launch two real clients and an isolated loopback server through a latency proxy.
 Run prepareYachtMultiplayerReview first. Does not use or change normal game saves.
 """
-import argparse, asyncio, json, os, time
+import argparse, asyncio, json, os, shutil, time
 from pathlib import Path
 root=Path(__file__).resolve().parents[2]
 p=argparse.ArgumentParser();p.add_argument('--latency-ms',type=int,default=50);p.add_argument('--timeout',type=int,default=360);args=p.parse_args()
 launch=json.loads((root/'build/yacht/multiplayer-launch.json').read_text())
 stamp=time.strftime('%Y%m%d-%H%M%S');work=root/'build/yacht/multiplayer'/stamp;output=root/'output/yacht/multiplayer'/stamp
 work.mkdir(parents=True);output.mkdir(parents=True)
+# Freeze launch inputs so another Gradle run cannot rewrite files beneath the clients.
+replacements={}
+for relative in ('build/classes/java/main','build/resources/main','build/moddev','build/yacht/sable-2.0.6-yacht-f64.jar'):
+    source=root/relative;dest=work/'launch'/relative
+    dest.parent.mkdir(parents=True,exist_ok=True)
+    if source.is_dir():shutil.copytree(source,dest)
+    else:shutil.copy2(source,dest)
+    replacements[str(source)]=str(dest)
+def remap(text):
+    for old,new in replacements.items():text=text.replace(old,new)
+    return text
+for file in (work/'launch/build/moddev').glob('*.txt'):file.write_text(remap(file.read_text()))
+launch=json.loads(remap(json.dumps(launch)))
 async def relay(reader,writer):
     try:
         while data:=await reader.read(262144):
