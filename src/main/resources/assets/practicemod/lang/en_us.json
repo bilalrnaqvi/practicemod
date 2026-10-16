@@ -133,5 +133,7 @@
   "container.practicemod.submarine_storage": "Submarine Storage",
   "item.practicemod.grappling_hook": "Grappling Hook",
   "item.practicemod.grappling_hook.use_hint": "Aim near an edge circle. Hold use to pull and launch; release early to cancel.",
-  "item.practicemod.grappling_hook.glide_hint": "Keep an umbrella in your offhand to glide after the fling."
+  "item.practicemod.grappling_hook.glide_hint": "Keep an umbrella in your offhand to glide after the fling.",
+  "item.practicemod.white_horizon_deed": "White Horizon Yacht Deed",
+  "block.practicemod.white_horizon_cell": "White Horizon Structure"
 }

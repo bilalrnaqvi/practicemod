@@ -1,227 +1,138 @@
-# White Horizon runtime investigation
+# White Horizon runtime handoff
 
-The completed yacht remains a static authoring asset. The runtime integration is
-**not complete**. The initial dependency spike and an opt-in moving-floor
-reproduction are implemented; the captain, map, ownership and full-size yacht must
-not be presented as usable gameplay until the movement gate passes.
+White Horizon now has a full-size Sable-backed runtime in `src/yacht/java`, enabled
+with **`-Pyacht`**. The canonical model is unchanged: the runtime exporter partitions
+its cuboids into 6,639 native block cells, with separate solid/translucent materials,
+shape collision, climbable swim ladders, light-emitting fixtures and door variants.
+This is a macOS arm64 development candidate, not a cross-platform release. The
+native f64 dependency and real multiplayer validation remain release limitations.
 
-## Reproduce the bounded fixture
+## Build and use
 
-Use a disposable development world under `build/yacht/run`. Automated GameTests use
-`build/yacht/game-tests`, separately from manual review worlds. Normal builds exclude both the prototype source
-and Sable. No yacht spawn item is registered.
-
-```sh
-python3 tools/yacht/fetch_sable.py
-./gradlew verifyProject --offline -PyachtPrototype
-./gradlew runClient --offline -PyachtPrototype
-```
-
-The download is pinned and checked by SHA-512 both by the fetcher and the Gradle
-configuration. [Dependency lock](SABLE_PROTOTYPE_LOCK.json) records the release,
-source inspection commit, and nested dependencies. A separately installed runtime
-Sable JAR is required for anyone running a prototype artifact outside Gradle; it is
-not shaded into Practice Mod. Never distribute the opt-in build as a finished yacht.
-
-In a creative disposable world with cheats, `/yachtprototype spawn` allocates a
-12 × 9 two-floor sub-level three blocks ahead in world +Z. The checked empty test
-corridor is 12 × 8 × 32 blocks. This is an air-space physics fixture, not the final
-water placement flow. It contains a U stair, upper rails, a chair and chest. The
-fixture holds until `/yachtprototype start`; the script then holds for two seconds, accelerates to 0.8 blocks/second, cruises, brakes and
-holds. The command permits one trip per fixture so it cannot leave its checked
-corridor on a repeated start. It uses Sable's velocity API and leaves occupants unmounted. It does not
-teleport the platform each tick. Test fixtures are removed on normal server shutdown;
-crash recovery and retained inventories are deliberately not implemented here.
-
-`/yachtprototype dock` instead creates a four-block-wide stationary review dock
-beside a held fixture. It requires a loaded, empty 17 × 9 × 36 region ahead, rejects
-obstructions before placing anything, and removes its owned stone dock on fixture
-disposal. Fly onto the dock in creative mode, switch to survival, and walk across;
-use `/yachtprototype start` to run the bounded trip. It is an air-space fixture,
-not a water-qualified acquisition flow. Do not reuse manual worlds from failed
-older experiments as clean measurement baselines.
-
-Before starting a held fixture, `/yachtprototype pool` adds the 3 × 3 contained
-pool and entry/exit steps. Its overhead floor is removed for headroom. This modifies
-only the disposable test fixture, not the canonical yacht. Pool entry/exit, exterior
-water/ladder transitions and a submerged dry room now have server-side tests.
-The fixture still lacks the complete gate and player-input/packet telemetry;
-real-client boundary checks remain. Door changes and dock transitions are covered
-by server-side tests. An armor stand is an initial contact probe, not a substitute
-for real player movement or multiplayer validation.
-
-## Backend audit
-
-Sable 2.0.6's published NeoForge release declares Minecraft 1.21.1 and NeoForge
-21.1.228 or later. The inspected source targets Java 21. The verified artifact
-bundles Sable Companion 1.6.0, Sable Rapier 2.0.6 and Veil 4.3.2. Create and Flywheel
-are optional; neither was added. The backend's PolyForm Shield license is not a
-permissive open-source license. Its terms and required notices must accompany any
-redistribution; this repository fetches the unmodified upstream artifact instead of
-committing or republishing it. See [upstream license](https://github.com/ryanhcode/sable/blob/d501fb3103c3247e20cb2151a99182ad5dd61adb/LICENSE.md).
-
-The source was inspected at commit `d501fb3103c3247e20cb2151a99182ad5dd61adb`;
-reproducibility of the release JAR from that commit was not established. Native
-Rapier initialization succeeded on this arm64 Mac with Temurin Java 21. Linux and
-Windows were not executed. Broad movement/render mixins and the included Veil
-renderer remain compatibility risks requiring actual client review.
-
-Source API references at the inspected commit:
-
-- `SubLevelContainer.allocateNewSubLevel(Pose3d)` and the plot's embedded accessor
-  allocate and populate local blocks.
-- `ServerSubLevelContainer.addForceLoadTicket` keeps the probe active without a
-  player; fixture disposal removes the ticket and sub-level.
-- `ForgeSablePrePhysicsTickEvent` provides each physics substep; velocities are
-  adjusted through `RigidBodyHandle.addLinearAndAngularVelocity`.
-- This prototype's velocity feedback is not an approved navigation controller and
-  must not be used to drive a full yacht into terrain.
-
-## Experimental double-precision candidate
-
-The official release fails the million-block travel check. A local native patch now
-uses the same pinned Rapier revision's `rapier3d-f64` package, double-precision
-Marten collision data and double-precision poses. It removes `simd-nightly` (the f64
-backend does not offer that feature) and retains parallel physics. Performance is
-unmeasured. The lock also selects `parry3d-f64` 0.26.1 (the original f32 lock
-used `parry3d` 0.26.0). This is a development candidate, **not an approved release dependency**.
-
-Canonical changes: [native patch](../../tools/yacht/native/sable-f64.patch),
-[upstream license](../../tools/yacht/native/LICENSE-SABLE.md),
-[builder](../../tools/yacht/build_sable_f64.py),
-[packager](../../tools/yacht/package_sable_f64.py) and
-[LZ4 helper](../../tools/yacht/Lz4Pack.java). The builder pins Sable commit
-`d501fb3103c3247e20cb2151a99182ad5dd61adb`, Rapier commit
-`38e92f117590862481a53df6fc69a5d893e29186`, Rust 1.90.0 and Cargo.lock.
-It refuses to overwrite an existing checkout. It requires Git, an existing Rust
-1.90.0 toolchain, Java 21 and network access for the first source/dependency fetch.
+Target: Minecraft 1.21.1, NeoForge 21.1.235, Java 21. The ordinary build excludes the
+yacht and Sable. Both client and server need the yacht build and the same patched
+Sable dependency; Sable is not shaded into the mod. The profile checks the locally
+built artifact against `build/yacht/sable-f64-local.json` and its upstream lock.
+See the [archived dependency investigation](../history/WHITE_HORIZON_RUNTIME-prototype.md)
+for pinned source revisions, native build commands and the official f32 failure.
 
 ```sh
-python3 tools/yacht/fetch_sable.py
-python3 tools/yacht/build_sable_f64.py
-python3 tools/yacht/package_sable_f64.py build/yacht/sable-f64-source/sable_rapier/src/main/rust/target/release/libsable_rapier.dylib
-./gradlew verifyProject --offline -PyachtPrototype -PyachtF64
-./gradlew runClient --offline -PyachtPrototype -PyachtF64
+./gradlew verifyProject --offline -Pyacht
+./gradlew runClient --offline -Pyacht
 ```
 
-The packager preserves the official JAR and writes a separate candidate and local
-SHA-512 manifest. Gradle verifies that manifest and the official base hash. The
-candidate contains **macOS arm64 natives only**; Linux/Windows must be built and
-validated separately before any shared-server use. No native binary is committed.
-Prototype JARs have a distinct `practicemod-yacht-prototype` name. Normal builds do
-not include these sources or Sable. The candidate is not a reproducible rebuild of
-the entire official Java release; it replaces its nested native payload only.
+1. Obtain **White Horizon Deed** from Tools & Utilities in creative mode, with
+   operator command `/yacht deed`, or craft `DID / INI / DID`: D diamond block,
+   I iron block, N nether star.
+2. Right-click the deed while looking horizontally toward loaded open water.
+   The hull origin is placed 42 blocks ahead. Validation requires a 68-block
+   turning area, at least five blocks of depth, no overhead terrain or living
+   occupants, world-border clearance and separation from other yachts. Failed
+   placement keeps the deed. Four simultaneously loaded yachts per dimension
+   are the current limit.
+3. Board using either aft swim ladder and platform, then use the modeled stairs.
+   Players are never required to mount passenger seats. Wait for preparation to end.
+4. Right-click the captain in the upper forward bridge. White marks the yacht;
+   orange marks the selected destination; gold marks route waypoints. Blue cells
+   indicate surveyed water, green terrain/shallow water, gray unloaded territory.
+   The map is a local world-coordinate chart, with a 128-block destination radius.
+   A blue pixel does not alone establish clearance for the whole yacht.
+5. Owner, designated navigator or operator may select destinations while stopped.
+   The server validates reach, permissions, range, depth and the swept turning
+   envelope before accepting travel. Cruise is 0.8 blocks/second with acceleration,
+   braking and slow turns. Stay aboard while the captain sails.
+6. Use the chart's stop button or `/yacht stop` to cancel. Any aboard passenger
+   can request an emergency stop. `/yacht status` reports the nearby yacht.
 
-## Automated results, 2026-10-15
+Owner commands `/yacht navigator <player>` and `/yacht revokeNavigator` manage
+captain access. `/yacht steward <player>` and `/yacht revokeSteward` manage service
+lockers. Right-click modeled lockers to access persistent 27-slot storage. Cabin
+doors toggle their canonical open/closed block variants and refuse to close over
+living occupants. Guest beds reset the rest timer without changing land respawn.
+Seating, bars, dining, machinery and entertainment furniture otherwise remain
+social/decorative spaces; no engine economy or unrelated systems were introduced.
+Structural breaking and additional block placement aboard are protected.
 
-| Check | Result |
-| --- | --- |
-| Official Sable 2.0.6 at million-block coordinates | Failed physical forward travel; retained as a regression reproduction |
-| Local f64 candidate, near origin | Passed; travel 13.900000 blocks, height error 0.064931 blocks, final local horizontal drift 0.0 |
-| Local f64 at X=Z=1,000,000 | Passed; travel 13.900000 blocks, same height error, drift 0.0 |
-| Ten-degree turn at X=Z=-1,000,000 | Passed; Z travel 15.039678 blocks, same height error, drift 0.0 |
-| Two simultaneous platforms in opposite distant regions | Passed after readiness gating; each traveled 13.900000 blocks with final drift 0.0 |
-| Support during acceleration, cruise, braking and stop | Checked every ten ticks; supported/unmounted assertions passed |
-| Jump/landing contact probe during cruise | Passed: upward impulse lifted probe >0.4 block, returned to the floor, final local drift 0.0 |
-| Unmounted mock-player stairs in both directions during motion | Passed ascent and descent routes and landing-height checks |
-| Stationary dock → stationary vessel → dock | Passed; returned to dock at tick 312 |
-| Stationary dock → moving vessel → dock | Passed; returned at tick 316 and stayed at a fixed world position through tick 600 while the vessel continued |
-| Door aboard moving fixture | Closed door blocked approach; changing both halves to open admitted the unmounted player |
-| Dock placement and cleanup | Obstructed corridor rejected without replacing terrain or leaving a partial dock; successful fixture disposal removed the dock |
-| Moving 3 × 3 pool entry/exit | Passed; 55 ticks of water detection, return through the steps to dry supported deck space |
-| Vessel → outside water → moving ladder → vessel | Passed; 47 wet ticks, 27 climbable ticks, dry supported return without mounting |
-| Ten-minute simulated contact soak at million-block coordinates | Passed 12,000 ticks with repeated smooth reversals, 305.575923 blocks accumulated travel, final local drift 0.0; sampled support/drift every ten ticks |
-| Submerged enclosed room | Passed dry body/eye state, full air supply, supported unmounted occupant, active outside water, and dry-mask disposal |
-| Full candidate verification | 76 required GameTests passed (61 existing + fifteen yacht tests), build and PAL checks passed |
+## Movement, persistence and safety
 
-These are server-side fixture tests. The armor stand probes are not players. The stair and dock tests apply horizontal velocity input and call one normal mock-player
-physics tick per step; they preserve vertical velocity/gravity and do not teleport
-between waypoints. Only initial test placement uses `setPos`. They do not exercise
-client inputs, prediction or network packets. The turn probe is a bounded
-physics test, not a destination navigation controller. The short-trip checks cover about 32 seconds. The soak covers ten minutes of
-**simulated** game time with repeated reversals in the same loaded corridor, not
-ten minutes of wall time or uninterrupted long-distance navigation. GameTests run
-faster than real time. No client prediction or packet delivery is involved.
+Sable provides sub-level collision, ordinary entity motion, embedded chunk
+rendering and its player movement protocol. The yacht controller applies velocity
+feedback and holds the authored waterline; it does not move passengers or teleport
+voyages. A one-time assembly correction aligns Sable's initial center of mass with
+the validated placement point. Native buoyancy is disabled for yacht cells to avoid
+competing with the waterline controller. Other vehicles' code is unchanged.
 
-The contact measurements use the embedded plot center and `Pose3d.transformPosition`
-and its inverse, not the moving center of mass. Initial fixed-time startup produced
-intermittent drift because probes had not landed. Tests now preload their bounded
-terrain, hold motion until 20 consecutive grounded ticks, and fail if contact is not
-ready within 300 ticks. The measured run settled at ticks 23–98. Motion starts after
-this baseline, so initial falling is neither counted as grounded drift nor hidden
-by taking a baseline after travel starts. Two-region motion overlaps, but begins
-independently when each probe settles. Test callbacks are registered in advance to
-avoid mutating Minecraft's pending-task map during iteration.
+Route search is bounded A* over eight-block cardinal steps, with every intervening
+block sampled against a 34-block-radius conservative turning envelope. Column
+surveys are cached only during planning; live movement rechecks present and ahead
+clearance. Terrain changes, unavailable water chunks, nearby yachts or external
+players stop travel. This deliberately rejects narrow channels rather than promise
+a tight docking maneuver. Long-distance routing and new ocean generation are not
+implemented. Planning is capped at 1,024 expanded nodes.
 
-### Transition-test corrections
+Ownership, navigator/steward permissions, captain UUID, model revision, locker
+contents and door state are stored in Sable's vessel user data. Block cells and pose
+are persisted by Sable itself. Reloaded controllers start STOPPED and require a new
+route; they do not blindly resume stale travel. Sable supplies saved player tracking
+points for reconnects. Force-load tickets are held while occupied, moving, preparing
+or planning, and released when idle or stopping. Empty vessels cancel travel.
 
-The first dock fixture overlapped the platform after its initialization offset;
-failed tests also left terrain in the old shared run directory. The corrected dock
-meets the settled vessel edge without overlapping it, restores/removes owned terrain
-on failure, and runs in the separate GameTest directory. A subsequent failure came
-from the test driver applying `player.tick()` **and** an extra `move()` each tick.
-That double movement disrupted the grounded state needed for step-up. The driver
-now performs one player physics tick per input. Both stair tests use the same
-corrected approach. No backend collision thresholds or player step height were
-relaxed to make these tests pass.
+Dry volumes use the authored lower/machinery masks and exclude the pool. The server
+replicates masks to nearby clients; clients replace them on changes and expire stale
+masks after three seconds without snapshots. Pool cells expose vanilla source-water
+fluid behavior with the canonical translucent surface. Partial visual water height
+and vanilla fluid height are not identical. Rendering uses native section rebuilds,
+block atlas textures and separate transparent child models, not a single giant
+entity bounding box. This has not been benchmarked for a 16-player party.
 
-A preliminary full-model partition audit found 6,639 occupied block cells and 360
-unique shape/material combinations (up to 13 pieces per cell). This is a feasibility
-measurement from the canonical exported scene, not a runtime import or performance
-result. The complete yacht is still not spawned by either review command.
+## Validation and review
 
-### Dry rooms and water synchronization
+- Canonical static geometry: 3,707 clearance samples across 54 routes pass.
+- `./gradlew verifyProject --offline -Pyacht`: **65 required tests passed**.
+  The normal profile separately passed **61 required tests**.
+- Full-runtime GameTests exercise complete-hull player contact, moving authored
+  stairs, deep-water route survey, changed terrain rejection, ladder export and
+  ownership serialization, in addition to the existing mod tests.
+- The bounded prototype separately covers jumping, doorways, docks, water/ladder
+  transitions, dry rooms, distant coordinates and a simulated ten-minute soak.
+  See the archived investigation for its 76-test result and exact scope.
+- [Local runtime review gallery](../../output/yacht/runtime-review.html).
+- Native baked-model renders: `output/yacht/native-review/`.
+- In-world integrated-client screenshots: `output/yacht/world-review/`. The client
+  stair harness sends ordinary forward input along the main-to-upper U stair;
+  its report records the actual local landing position. The end-to-end client run
+  opened the captain interaction, sent a destination request and reached ARRIVED
+  at approximately (1000, 185.065, 1015.423). Review fixtures may set
+  initial camera/player positions; that is not the gameplay travel mechanism.
+- `-PyachtModelReview` renders baked models at the title screen. `-PyachtWorldReview`
+  opens the disposable `White Horizon Review` save and modifies its test basin;
+  never point that harness at a valued world. It requires an existing review save.
 
-The pinned Sable source exposes `WaterOcclusionContainer` and `BoundedBitVolume3i`.
-The prototype creates a bounded vessel-local air region using embedded plot
-coordinates; Sable transforms it with the vessel during fluid queries. The test
-registers the mask explicitly—enclosing blocks alone are not being claimed to
-create a dry interior. Pool and exterior-water tests run without this air mask.
+Restart review reloaded the same hull UUID, preserved its owner and position,
+started STOPPED, and reopened the persisted captain's chart. Actual block right-clicks
+also opened the service locker and toggled a guest cabin door. Review output is under
+`output/yacht/reload-review/`; reproduce with `-PyachtWorldReview -PyachtReloadReview`
+after the initial disposable-world run. Automated startup failures now fail the yacht
+verification task even if Minecraft itself exits with a misleading zero code.
 
-Upstream `WaterOcclusionContainer` explicitly states that regions are **not
-networked**. Full integration must publish authoritative dry-volume definitions to
-clients on spawn/tracking/rejoin and dimension changes, remove them on unload, and
-recreate them on save/load. Client masks must agree with server masks, exclude the
-pool, and cover the authored dry-room cells rather than the whole hull envelope.
-Camera/fog/water-render suppression needs in-world review. This checkpoint implements
-and tests server-side registration and cleanup only; it does not implement that
-network protocol or claim multiplayer water exclusion.
+Remaining release validation: two real clients with latency/correction telemetry,
+full voyage/reconnect and crash-recovery tests, Linux/Windows native builds, manual
+moving swim/dock/jump tests on the final hull, and performance under party load.
+Server probes and one integrated client do not establish reliable multiplayer.
+The patched native runtime remains explicitly opt-in pending that validation.
 
-## Client review status
+Existing saved vessels are not automatically migrated after a canonical model/palette revision; such revisions require a deliberate migration before deployment.
 
-The f64 client launched and reached completed shader upload. The available desktop
-control inventory did not expose the Java window and selecting `java` returned
-`Invalid app`; no in-world or first-person review was performed. Local startup log:
-`/private/tmp/yacht-f64-client.log`. To review manually, use the isolated client
-command above, create a disposable creative world with cheats, find loaded empty
-12 × 8 × 32 air space, run `/yachtprototype spawn`, board, and run
-`/yachtprototype start`. Use `/yachtprototype dock` for the wider, dock-equipped
-setup described above. These are small test structures, not White Horizon. The
-desktop inventory was checked again during transition work and still exposed no
-Minecraft/Java app; no new in-world review was possible.
+## Changed source locations
 
-## Remaining release gates
-
-- Real-client first-person stairs, jumping, boarding and disembarking; stationary
-  and moving dock/water transitions, doors, pool and chunk boundaries.
-- Two real clients, latency and correction telemetry, distant regions, disconnect /
-  reconnect, sustained travel and chunk reloads. Two server probes do not prove
-  multiplayer synchronization.
-- Linux server and Windows client native builds; full-yacht performance and Sable /
-  Veil compatibility with the other vehicles. Existing mock-player tests can log
-  oversized AABB warnings under Sable; passing assertions do not resolve those.
-- Full-size model-to-block/collision integration, dry interiors and pool-water
-  representation, lighting/transparency/culling review.
-- Acquisition and water/clearance checks, ownership/persistence, captain, map,
-  destination validation, width/draft-aware routes, safe stops and chunk lifecycle.
-
-The full yacht is still a static asset. No finished yacht spawn item or captain is
-registered. Canonical model/textures/exports and existing vehicle movement/cameras
-were not changed by this investigation. Keep feature expansion behind the movement
-gate; no forced seats or passenger teleportation are substitutes.
-
-Local logs: `/private/tmp/yacht-dry-room.log` records the final 76-test candidate pass;
-`/private/tmp/yacht-f64-final-build.log` records the locked native rebuild. These are
-local diagnostics, not shared source. The normal `./gradlew verifyProject --offline` also passed all 61 required tests
-(`/private/tmp/yacht-water-normal.log`). The earlier unrelated grappling compile
-failure has been resolved by concurrent work; it no longer blocks this prototype.
+- [Runtime Java](../../src/yacht/java/com/bilal/practicemod/yacht/runtime/): block/item
+  registration, hull controller, navigator, captain/network interactions, map,
+  furniture, tests, review harnesses and the yacht-only fluid-render mixin.
+- [Runtime exporter](../../tools/yacht/export_runtime.py): derives block models,
+  collision shapes, door variants, textures, recipe and physics properties from
+  the unchanged canonical Blockbench project.
+- [Gradle](../../build.gradle), [mod metadata](../../src/main/templates/META-INF/neoforge.mods.toml)
+  and [English names](../../src/main/resources/assets/practicemod/lang/en_us.json):
+  opt-in profile, dependency declaration, generation, test guard and item names.
+- Shared design/model/runtime guidance updated in place; the prototype investigation
+  is retained under `docs/history/`. Review frames and logs are not source checkpoints.

@@ -1,11 +1,9 @@
 # White Horizon — shared yacht design and implementation plan
 
-Status: technical plan with a completed static modeling stage, 2026-10-14. See the
-[editable model handoff](WHITE_HORIZON_MODEL.md) for actual assets, layout corrections
-and static validation. The visual direction is approved; the finished model is not yet
-user-approved. Yacht gameplay remains unimplemented. An opt-in Sable dependency spike and moving-floor
-fixture now exist; see the [runtime investigation](WHITE_HORIZON_RUNTIME.md) for the
-official-release precision failure, experimental f64 candidate results and reproducible commands. The backend is not approved for release.
+Status: completed static model and opt-in full-size runtime candidate. See the
+[model handoff](WHITE_HORIZON_MODEL.md) and [runtime handoff](WHITE_HORIZON_RUNTIME.md)
+for canonical assets, usage and validation limits. The visual direction is approved;
+no final model approval or cross-platform multiplayer certification is inferred.
 
 Target: Minecraft **1.21.1**, NeoForge **21.1.235**, Java **21**, Mojang names with
 Parchment **2024.11.17**. Start with a luxurious player-owned social space for about

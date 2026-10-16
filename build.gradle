@@ -55,6 +55,14 @@ neoForge {
     runs {
         client {
             client()
+            if (project.hasProperty('yachtWorldReview')) {
+                systemProperty 'practicemod.yachtWorldReview', file(project.hasProperty('yachtReloadReview') ? 'output/yacht/reload-review' : 'output/yacht/world-review').absolutePath
+                if (project.hasProperty('yachtReloadReview')) systemProperty 'practicemod.yachtReloadReview', 'true'
+                programArguments.addAll '--quickPlaySingleplayer', 'White Horizon Review'
+            }
+            if (project.hasProperty('yachtModelReview')) {
+                systemProperty 'practicemod.yachtModelReview', file('output/yacht/native-review').absolutePath
+            }
             if (project.hasProperty('submarineModelReview')) {
                 systemProperty 'practicemod.submarineModelReview', file('output/animation/boarding-runtime/rear-runtime').absolutePath
             }
@@ -170,6 +178,8 @@ var generateModMetadata = tasks.register("generateModMetadata", ProcessResources
             mod_name               : mod_name,
             mod_license            : mod_license,
             mod_version            : mod_version,
+            yacht_mixins           : project.hasProperty("yacht") ? '[[mixins]]\nconfig="practicemod.yacht.mixins.json"' : '',
+            yacht_dependency_type  : (project.hasProperty("yacht") || project.hasProperty("yachtPrototype")) ? "required" : "optional",
     ]
     inputs.properties replaceProperties
     expand replaceProperties
@@ -231,14 +241,14 @@ tasks.register('verifyProject') {
     dependsOn tasks.named('build'), tasks.named('validateBlenderPlayback'), tasks.named('runGameTestServer')
 }
 
-// Isolated moving-floor investigation; not included in normal builds/releases.
-if (project.hasProperty('yachtPrototype')) {
+// Optional Sable-backed yacht runtime and isolated movement fixture.
+if (project.hasProperty('yachtPrototype') || project.hasProperty('yacht')) {
     def sableJar = file('build/yacht/sable-2.0.6.jar')
     if (!sableJar.exists()) throw new GradleException('Run python3 tools/yacht/fetch_sable.py first')
     def expected = '76d293ce751a01cb9c095a3659b0a41e03e005480bc9d76dfdc73ec7c2eabf7923740c7b077921d42616673c496cd5143569f2085ddcebe174fd91d81e2a04b8'
     if (java.security.MessageDigest.getInstance('SHA-512').digest(sableJar.bytes).encodeHex().toString() != expected)
         throw new GradleException('Unrecognized Sable prototype artifact')
-    if (project.hasProperty('yachtF64')) {
+    if (project.hasProperty('yachtF64') || project.hasProperty('yacht')) {
         if (System.getProperty('os.name') != 'Mac OS X' || System.getProperty('os.arch') != 'aarch64')
             throw new GradleException('The experimental f64 candidate currently supports macOS arm64 only')
         def manifestFile = file('build/yacht/sable-f64-local.json')
@@ -250,8 +260,26 @@ if (project.hasProperty('yachtPrototype')) {
         if (java.security.MessageDigest.getInstance('SHA-512').digest(sableJar.bytes).encodeHex().toString() != manifest.sha512)
             throw new GradleException('Experimental f64 candidate hash mismatch')
     }
-    base.archivesName = "${mod_id}-yacht-prototype"
-    sourceSets.main.java.srcDir 'src/yachtPrototype/java'
+    def yachtTestLog = file('build/yacht/game-tests/logs/latest.log')
+    tasks.named('verifyProject').configure {
+        doLast {
+            if (!yachtTestLog.exists() || !(yachtTestLog.text =~ /All \d+ required tests passed/).find())
+                throw new GradleException('Yacht GameTest server did not report a complete pass; inspect build/yacht/game-tests/logs/latest.log')
+        }
+    }
+    base.archivesName = project.hasProperty('yacht') ? "${mod_id}-yacht" : "${mod_id}-yacht-prototype"
+    if (project.hasProperty('yachtPrototype')) sourceSets.main.java.srcDir 'src/yachtPrototype/java'
+    if (project.hasProperty('yacht')) {
+        sourceSets.main.java.srcDir 'src/yacht/java'
+        sourceSets.main.resources.srcDir layout.buildDirectory.dir('generated/yachtResources')
+        def generateYacht = tasks.register('generateYachtRuntime', Exec) {
+            inputs.file 'src/main/blockbench/white_horizon/white_horizon.bbmodel'
+            inputs.file 'tools/yacht/export_runtime.py'
+            outputs.dir layout.buildDirectory.dir('generated/yachtResources')
+            commandLine 'python3', 'tools/yacht/export_runtime.py'
+        }
+        tasks.named('processResources').configure { dependsOn generateYacht }
+    }
     neoForge.runs.configureEach {
         gameDirectory = file(name == 'gameTestServer' ? 'build/yacht/game-tests' : 'build/yacht/run')
     }

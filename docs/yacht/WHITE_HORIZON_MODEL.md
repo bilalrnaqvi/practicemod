@@ -1,8 +1,8 @@
 # White Horizon — editable model handoff
 
-The static yacht is modeled and furnished. It is **not registered as a Minecraft
-vehicle**. Moving-floor physics, the captain's map, water exclusion, multiplayer and
-runtime rendering remain the engineering work described in the [technical brief](WHITE_HORIZON.md).
+The yacht is modeled and furnished. The canonical model now feeds the optional
+Sable-backed runtime described in the [runtime handoff](WHITE_HORIZON_RUNTIME.md).
+This document records authoring and static validation; runtime results are separate.
 
 ## Open and review
 
@@ -162,4 +162,4 @@ visible fence/pane cuboids; a future Minecraft backend must provide continuous
 vanilla-like fence collision rather than treating visible gaps as safe barriers.
 Static geometry cannot establish moving contacts, jump momentum, reboarding,
 multiplayer synchronization, server performance, or native block palette conversion.
-The Sable moving-floor prototype remains a prerequisite for runtime yacht integration.
+The current runtime handoff records the subsequent full-size integration and its remaining validation limits.
