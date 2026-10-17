@@ -33,6 +33,10 @@ public final class YachtMultiplayerReview {
         // Let both clients receive the new sublevel before positioning the review actors.
         // This is fixture setup only; no player correction is applied during travel.
         if(ticks==200 && owner!=null && guest!=null){place(owner,0,4.05,14);place(guest,-5,.05,-11);}
+        if(ticks==350 && guest!=null && Boolean.getBoolean("practicemod.yachtReviewBoardingOnly")) {
+            place(guest,-1.5,-4.5,-30.4);boardingTick=ticks;
+            yacht.route=new java.util.ArrayList<>(java.util.List.of(YachtRuntime.point(yacht.ship,0,0,8)));yacht.status="SAILING — boarding review";
+        }
         if(yacht.speed>.2)movingTicks++;
         if(ticks%20==0) {
             var data=new JsonObject();data.addProperty("ticks",ticks);data.addProperty("ship",yacht.ship.getUniqueId().toString());data.addProperty("status",yacht.status);
@@ -52,7 +56,7 @@ public final class YachtMultiplayerReview {
         }
         if(boardingTick>0 && owner!=null && guest!=null && Files.exists(Path.of(output,"YachtGuest-disembarked.json"))) {
             var o=YachtRuntime.local(yacht.ship,owner.position());var g=YachtRuntime.local(yacht.ship,guest.position());
-            boolean valid=movingTicks>200 && Math.abs(o.y-4)<.2 && g.y< -4.5 && g.z< -31 && guest.isInWater() && yacht.speed<.01 && owner.getVehicle()==null && guest.getVehicle()==null;
+            boolean valid=movingTicks>(Boolean.getBoolean("practicemod.yachtReviewBoardingOnly")?10:200) && Math.abs(o.y-4)<.2 && g.y< -4.5 && g.z< -31 && guest.isInWater() && yacht.speed<.01 && owner.getVehicle()==null && guest.getVehicle()==null;
             write(Path.of(output,"server-result.json"),"{\"passed\":"+valid+",\"movingTicks\":"+movingTicks+",\"status\":\""+yacht.status+"\",\"ownerLocal\":\""+o+"\",\"guestLocal\":\""+g+"\"}");
             finished=true;
         }

@@ -16,7 +16,7 @@ import java.util.*;
 /** Real client input and packets; the shared file coordinates the test, never player motion. */
 @EventBusSubscriber(modid="practicemod",value=Dist.CLIENT)
 public final class YachtMultiplayerClientReview {
-    static int ticks,target,jumpTicks,seenPlayers;static boolean interacted,requested,done,boarded;static double maxStep,maxJump;static Vec3 previous;
+    static int ticks,target,jumpTicks,seenPlayers,swimTicks;static boolean interacted,requested,done,boarded;static double maxStep,maxJump;static Vec3 previous;
     static final List<Vec3> path=new ArrayList<>();static String capture;
     @SubscribeEvent public static void tick(ClientTickEvent.Post event) {
         String output=System.getProperty("practicemod.yachtMultiplayerReview");var mc=Minecraft.getInstance();
@@ -35,6 +35,9 @@ public final class YachtMultiplayerClientReview {
         if(Boolean.getBoolean("practicemod.yachtReviewReconnect")) {
             if(ticks==160)YachtMultiplayerReview.write(Path.of(output,name+"-reconnected.json"),"{\"local\":\""+local+"\",\"otherPlayers\":"+(mc.level.players().size()-1)+"}");
             if(state.has("boarding") && state.get("boarding").getAsBoolean()) {
+                mc.setScreen(null);swimTicks++;
+                if(swimTicks==60)capture=name+"-swim-contact";
+                if(swimTicks%20==0)YachtMultiplayerReview.write(Path.of(output,name+"-swim.json"),"{\"local\":\""+local+"\",\"water\":"+mc.player.isInWater()+",\"climbing\":"+mc.player.onClimbable()+",\"forward\":"+mc.player.input.forwardImpulse+",\"jump\":"+mc.player.input.jumping+"}");
                 if(!boarded && local.y>=-2.1 && local.z> -29.2 && local.z< -28) {
                     boarded=true;capture=name+"-boarded";YachtMultiplayerReview.write(Path.of(output,name+"-boarded.json"),"{\"local\":\""+local+"\"}");
                 }

@@ -34,14 +34,20 @@ jobs:
         run: ./gradlew verifyProject
       - name: Install pinned Rust target
         run: rustup toolchain install 1.90.0 --profile minimal --target '${{ matrix.target }}'
+      - name: Install portable Linux linker
+        if: startsWith(matrix.platform, 'linux')
+        run: pip install cargo-zigbuild==0.23.4 ziglang==0.14.1
       - name: Build exact native patch
-        run: python tools/yacht/build_sable_f64.py --platform '${{ matrix.platform }}'
+        run: python tools/yacht/build_sable_f64.py --platform '${{ matrix.platform }}' ${{ startsWith(matrix.platform, 'linux') && '--cross' || '' }}
       - name: Package matching native
         run: |
           python tools/yacht/fetch_sable.py
           python tools/yacht/package_sable_f64.py --native '${{ matrix.platform }}=build/yacht/sable-f64-source/sable_rapier/src/main/rust/target/${{ matrix.target }}/release/${{ matrix.library }}'
       - name: Exercise native in Minecraft dedicated-server tests
-        run: ./gradlew verifyProject -Pyacht
+        run: |
+          ./gradlew verifyProject -PyachtPrototype -PyachtF64
+          cp build/yacht/game-tests/logs/latest.log build/yacht/prototype-verification.log
+          ./gradlew verifyProject -Pyacht
       - name: Two real clients, network latency, and reconnect
         if: matrix.platform == 'linux-x64'
         run: |
@@ -55,7 +61,9 @@ jobs:
         if: always()
         with:
           name: yacht-tests-${{ matrix.platform }}
-          path: build/yacht/game-tests/logs/latest.log
+          path: |
+            build/yacht/game-tests/logs/latest.log
+            build/yacht/prototype-verification.log
       - uses: actions/upload-artifact@v4
         if: always() && matrix.platform == 'linux-x64'
         with:

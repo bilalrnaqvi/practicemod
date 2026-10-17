@@ -4,7 +4,7 @@ Run prepareYachtMultiplayerReview first. Does not use or change normal game save
 import argparse, asyncio, json, os, shutil, time
 from pathlib import Path
 root=Path(__file__).resolve().parents[2]
-p=argparse.ArgumentParser();p.add_argument('--latency-ms',type=int,default=50);p.add_argument('--timeout',type=int,default=360);args=p.parse_args()
+p=argparse.ArgumentParser();p.add_argument('--latency-ms',type=int,default=50);p.add_argument('--timeout',type=int,default=360);p.add_argument('--boarding-only',action='store_true');args=p.parse_args()
 launch=json.loads((root/'build/yacht/multiplayer-launch.json').read_text())
 stamp=time.strftime('%Y%m%d-%H%M%S');work=root/'build/yacht/multiplayer'/stamp;output=root/'output/yacht/multiplayer'/stamp
 work.mkdir(parents=True);output.mkdir(parents=True)
@@ -61,6 +61,7 @@ async def start(role,name,reconnect=False):
     jvm=[v for v in cfg['jvm'] if not v.startswith('-Xmx')]
     cmd=[cfg['java'],*jvm,'-Xmx2G',f'-Dpracticemod.yachtMultiplayerReview={output}','-Dpracticemod.yachtReviewRequireReconnect=true']
     if reconnect:cmd+=['-Dpracticemod.yachtReviewReconnect=true']
+    if args.boarding_only:cmd+=['-Dpracticemod.yachtReviewBoardingOnly=true']
     cmd+=['-cp',cfg['classpath'],cfg['main'],*cfg['args']]
     if role=='client':cmd+=['--username',name,'--quickPlayMultiplayer','127.0.0.1:25575','--width','854','--height','480']
     log=open(output/(name+('-reconnect' if reconnect else '')+'.log'),'wb')
@@ -77,8 +78,8 @@ async def main():
             if server.returncode is not None:raise RuntimeError('Server exited before readiness')
             if 'Done (' in (output/'server.log').read_text(errors='replace'):break
         else:raise RuntimeError('Server startup timeout')
-        procs.append(await start('client','YachtOwner'));await asyncio.sleep(3);procs.append(await start('client','YachtGuest'))
-        reconnected=False
+        procs.append(await start('client','YachtOwner'));await asyncio.sleep(3);procs.append(await start('client','YachtGuest',reconnect=args.boarding_only))
+        reconnected=args.boarding_only
         for _ in range(args.timeout):
             await asyncio.sleep(1)
             if not reconnected and (output/'YachtGuest-done.json').exists():
@@ -86,10 +87,10 @@ async def main():
                 procs[2]=await start('client','YachtGuest',reconnect=True);reconnected=True
             if (output/'server-result.json').exists():
                 result=json.loads((output/'server-result.json').read_text());result['proxy_one_way_delay_ms']=args.latency_ms
-                for name in ('YachtOwner','YachtGuest'):
+                for name in (() if args.boarding_only else ('YachtOwner','YachtGuest')):
                     record=json.loads((output/(name+'-done.json')).read_text());result[name]=record
                     result['passed'] &= record['maxJump']>1 and record['maxLocalStep']<1.5 and record['otherPlayers']>=1
-                result['passed'] &= result['YachtGuest']['stairComplete']
+                if not args.boarding_only:result['passed'] &= result['YachtGuest']['stairComplete']
                 (output/'summary.json').write_text(json.dumps(result,indent=2)+'\n');print(json.dumps(result),flush=True)
                 if not result['passed']:raise RuntimeError('Multiplayer fixture failed')
                 break

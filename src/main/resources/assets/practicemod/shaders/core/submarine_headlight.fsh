@@ -47,8 +47,8 @@ out vec4 fragColor;
 
 float shadowDepth(ivec2 pixel, int index) {
     pixel = clamp(pixel, ivec2(0), ivec2(31));
-    vec2 packed = texelFetch(HeadlightShadow, pixel + ivec2(0, index * 32), 0).rg;
-    return dot(packed, vec2(255.0, 65280.0)) * (32.0 / 65535.0);
+    vec2 packedDepth = texelFetch(HeadlightShadow, pixel + ivec2(0, index * 32), 0).rg;
+    return dot(packedDepth, vec2(255.0, 65280.0)) * (32.0 / 65535.0);
 }
 
 float visible(ivec2 pixel, int index, vec3 forward, vec3 right, vec3 up,
