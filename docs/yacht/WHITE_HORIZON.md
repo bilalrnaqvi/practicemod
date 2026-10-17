@@ -24,10 +24,11 @@ structural blocks/stairs first, then add restrained Blockbench trim. Keep the ya
 level, with translation and yaw only, for the first release. Do not implement ocean
 roll, pitch, destructible hull physics or arbitrary player rebuilding initially.
 
-This is an architectural recommendation conditional on the bounded prototype below,
-not a claim that the existing repository already supports it. If the dependency or
-movement gates fail, preserve the design and report the failure; a stationary yacht
-can be a separate interim feature, but cannot satisfy walking during travel.
+The bounded prototype and full-size runtime now implement this architecture.
+The precision investigation required the pinned Sable f64 native patch; the
+platform report records native-host and real-client evidence. The proposal and
+acceptance criteria below remain the design rationale, while the runtime handoff
+is authoritative for implemented behavior and validation limits.
 
 ### Repository evidence
 

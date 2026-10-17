@@ -6,9 +6,9 @@ its cuboids into 6,639 native block cells, with separate solid/translucent mater
 shape collision, climbable swim ladders, light-emitting fixtures and door variants.
 The native package now contains Windows, Linux and macOS libraries for both x64
 and ARM64. A dedicated-server test with two actual Mac clients has passed moving
-stairs, jumping and captain travel. Native-host CI and reconnect validation are
-tracked in [platform verification](CROSS_PLATFORM.md); packaging alone is not a
-claim that every operating system has passed gameplay tests.
+stairs, jumping, captain travel, reconnect and swim boarding/disembarking. Native-host CI results are
+recorded in [platform verification](CROSS_PLATFORM.md): all six native hosts passed
+server tests, and Linux x64 and Mac ARM64 passed real two-client tests.
 
 ## Build and use
 
@@ -120,11 +120,11 @@ also opened the service locker and toggled a guest cabin door. Review output is 
 after the initial disposable-world run. Automated startup failures now fail the yacht
 verification task even if Minecraft itself exits with a misleading zero code.
 
-The two-client dedicated-server voyage passed with added TCP latency, moving
-stairs, jumping/landing and mutual player replication. See the platform report for
-precise measurements and subsequent UDP/reconnect and native-host CI results.
-Remaining validation includes crash recovery, final-hull swim/dock transitions,
-and performance under party load. The native runtime remains an explicit yacht
+The full two-client dedicated-server sequence passed with added TCP/UDP latency,
+moving stairs, jumping/landing, mutual player replication, reconnect aboard,
+final-hull swim boarding/disembarking and safe stopping. See the platform report
+for measurements and native-host CI results. Remaining validation includes abrupt
+crash recovery, full-hull dock edge cases and performance under 16-player party load. The native runtime remains an explicit yacht
 build profile; ordinary builds retain the existing dependency footprint.
 
 Existing saved vessels are not automatically migrated after a canonical model/palette revision; such revisions require a deliberate migration before deployment.

@@ -47,5 +47,5 @@
       "isObfuscated": false
     }
   ],
-  "scope": "Opt-in development prototype only; not bundled in normal Practice Mod builds."
+  "scope": "Pinned upstream dependency for the opt-in prototype and full yacht runtime; the distributed native archive is rebuilt with the canonical f64 patch. Ordinary builds exclude Sable."
 }
