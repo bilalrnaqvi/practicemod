@@ -304,6 +304,7 @@ if (project.hasProperty('yachtPrototype') || project.hasProperty('yacht')) {
     } finally { zip.close() }
     dependencies { compileOnly files(companion) }
     if (project.hasProperty('yacht')) {
+        def distributionManifest = layout.buildDirectory.file('yacht/sable-f64-local.json').get().asFile
         tasks.register('yachtDistribution', Zip) {
             group = 'distribution'
             description = 'Bundle the yacht mod, all six physics natives, provenance, and usage instructions.'
@@ -317,7 +318,7 @@ if (project.hasProperty('yachtPrototype') || project.hasProperty('yacht')) {
             from('tools/yacht/native/sable-f64.patch')
             from('docs/yacht/WHITE_HORIZON_RUNTIME.md')
             doFirst {
-                def manifest = new groovy.json.JsonSlurper().parse(file('build/yacht/sable-f64-local.json'))
+                def manifest = new groovy.json.JsonSlurper().parse(distributionManifest)
                 if (!manifest.natives.keySet().containsAll(['macos-arm64','macos-x64','linux-arm64','linux-x64','windows-arm64','windows-x64']))
                     throw new GradleException('Distribution requires all six f64 natives; partial native packages are development-only.')
             }
